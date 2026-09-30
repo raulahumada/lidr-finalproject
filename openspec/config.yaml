@@ -1,0 +1,33 @@
+schema: spec-driven
+
+# Shown to AI when creating OpenSpec artifacts (proposals, specs, tasks, design).
+context: |
+  Entrega Máster AI Engineering (LIDR): plataforma multiagente + RAG.
+  Cliente / corpus: Metropol Fintech (docs de omnicanalidad, ventas, cobranzas, Tenela).
+  Monorepo: backend/ (FastAPI) + frontend/ (Next.js + Astryx).
+
+  Arquitectura de referencia del curso (layout y capas del ai-service), rama session_16:
+    https://github.com/LIDR-academy/ai-engineering/tree/session_16/ai-service/app
+
+  Usar esa rama como referencia de capas (api, foundation, generation/rag, etc.),
+  no como código a copiar verbatim. El dominio y el corpus son Metropol Fintech;
+  el producto de esta entrega es RAG + orquestación multiagente sobre ese conocimiento.
+
+  Ver también README.md (producto / cliente) y AGENTS.md (operativa del repo).
+
+  Buenas prácticas Python del monorepo: docs/python-best-practices.md
+  (obligatorio leer y contrastar en proposals/designs con surface backend o both).
+
+  Cambios nuevos: preferir /opsx-prespec (draft + sync referencia del curso + surface front|back|both)
+  antes de /opsx-propose cuando el cambio deba alinearse a la arquitectura del curso.
+
+# Per-artifact rules
+rules:
+  proposal:
+    - If the change touches backend/ or surface is backend|both, read docs/python-best-practices.md and include a "Practices check" section: aligned points, conscious deviations (with why), and risks if ignored.
+    - Always include a Non-goals section.
+  design:
+    - If backend|both: map new modules to layers from docs/python-best-practices.md (and course reference shape). Call out any layer-rule tension.
+  tasks:
+    - When both surfaces, group tasks under Backend and Frontend headings.
+    - Backend tasks should not put business/LLM logic directly in routers unless the practices doc exception applies.
