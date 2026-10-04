@@ -1,0 +1,2 @@
+/* Must load before other stylesheets (Next/webpack hoists @import). */
+@layer reset, theme, base, astryx-base, astryx-theme, components, utilities;
