@@ -2,6 +2,28 @@
 
 Changelog of promoted changes in this monorepo.
 
+## 2026-10-08 — `upgrade-rag-chunking`
+
+**Status:** archived → `openspec/changes/archive/2026-10-08-upgrade-rag-chunking/`  
+**Surface:** backend  
+**Synced to:** `openspec/specs/rag-chunking/spec.md`
+
+### What landed
+
+- Recursive chunking (~512 tokens / ~80 overlap) via `langchain-text-splitters` + `tiktoken`
+- Markdown header-aware splitting; light `normalize_text` (incl. PDF line-join heuristic)
+- Ingest persists `strategy` / `section` in chunk metadata; re-ingest with `--force`
+- Unit tests for empty / long prose / md sections; docs in `AGENTS.md`
+
+### Why
+
+Paragraph-only splits hurt retrieval quality; align with course recursive baseline before `/answer`.
+
+### Follow-ups (out of this change)
+
+- `POST /answer` with grounded citations; then multi-agent orchestration.
+- Optional A/B eval of chunk quality; Contextual Retrieval only if recursive underperforms.
+
 ## 2026-10-08 — `ingest-metropol-corpus`
 
 **Status:** archived → `openspec/changes/archive/2026-10-08-ingest-metropol-corpus/`  

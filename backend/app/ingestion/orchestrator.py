@@ -9,7 +9,7 @@ from typing import Protocol
 from sqlalchemy.orm import sessionmaker
 
 from app.foundation.persistence.repository import ChunkStore
-from app.generation.rag.chunking import chunk_text
+from app.generation.rag.chunking import chunk_document
 from app.ingestion.loaders import iter_corpus_files
 from app.ingestion.parsers.registry import ParserRegistry, default_registry
 
@@ -64,16 +64,25 @@ def run_ingest(
                     session.commit()
 
             text = registry.get(corpus_file.extension).parse(corpus_file.absolute_path)
-            pieces = chunk_text(text)
+            pieces = chunk_document(text, extension=corpus_file.extension)
             if not pieces:
                 summary.failed += 1
                 summary.errors.append(f"{source_path}: no extractable text")
                 continue
 
-            vectors = embedder.embed_many(pieces)
+            vectors = embedder.embed_many([p.content for p in pieces])
             chunk_rows = [
-                ("paragraph", content, vector, {"index": index})
-                for index, (content, vector) in enumerate(zip(pieces, vectors))
+                (
+                    piece.strategy,
+                    piece.content,
+                    vector,
+                    {
+                        "index": index,
+                        "strategy": piece.strategy,
+                        **({"section": piece.section} if piece.section else {}),
+                    },
+                )
+                for index, (piece, vector) in enumerate(zip(pieces, vectors))
             ]
 
             with session_factory() as session:
