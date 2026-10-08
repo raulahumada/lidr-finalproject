@@ -2,6 +2,29 @@
 
 Changelog of promoted changes in this monorepo.
 
+## 2026-10-08 — `ingest-metropol-corpus`
+
+**Status:** archived → `openspec/changes/archive/2026-10-08-ingest-metropol-corpus/`  
+**Surface:** backend  
+**Synced to:** `openspec/specs/corpus-ingest/spec.md`
+
+### What landed
+
+- `app/ingestion/`: filesystem walk, ParserRegistry (pdf/docx/txt/md), CLI `python -m app.ingestion.run_ingest`
+- Settings `CORPUS_ROOT` / `CORPUS_EXTENSIONS`; skip unsupported types; idempotent by `source_path` + `--force`
+- Chunker baseline (paragraph / fixed-size); reuse embedder + `ChunkStore`
+- Verified against local Metropol corpus (~75 docs, ~810 chunks)
+
+### Why
+
+Search needs real client knowledge, not only the demo fixture.
+
+### Follow-ups (out of this change)
+
+- Upgrade chunking (recursive + structural) per course session-07 guidance; re-ingest.
+- `POST /answer`; then agents.
+- Do not commit `backend/.env` or corpus files.
+
 ## 2026-10-08 — `add-rag-chunks-and-search`
 
 **Status:** archived → `openspec/changes/archive/2026-10-08-add-rag-chunks-and-search/`  

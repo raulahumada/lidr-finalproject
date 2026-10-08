@@ -21,6 +21,9 @@ class Settings(BaseSettings):
     # Embeddings (text-embedding-3-small, 1536-d). Empty key → search returns 503.
     openai_api_key: str = ""
     embedding_model: str = "text-embedding-3-small"
+    # Local Metropol corpus (absolute path). Empty → ingest CLI refuses to run.
+    corpus_root: str = ""
+    corpus_extensions: str = "pdf,docx,txt,md"
 
     @property
     def cors_origins_list(self) -> list[str]:
@@ -29,6 +32,14 @@ class Settings(BaseSettings):
     @property
     def embeddings_configured(self) -> bool:
         return bool(self.openai_api_key.strip())
+
+    @property
+    def corpus_extensions_list(self) -> list[str]:
+        return [
+            ext.strip().lstrip(".").lower()
+            for ext in self.corpus_extensions.split(",")
+            if ext.strip()
+        ]
 
 
 @lru_cache

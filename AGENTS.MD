@@ -100,6 +100,23 @@ alembic upgrade head
 python -m app.generation.rag.seed_fixture   # requiere OPENAI_API_KEY
 ```
 
+### Ingest corpus Metropol (macOS / bash)
+
+El corpus del cliente **no** vive en el repo. Apuntá `CORPUS_ROOT` en `backend/.env` a la carpeta local, p. ej.:
+
+`/Users/…/Documents/Corpus/Metropol Fintech - Omnicanalidad (Agentes)`
+
+Allowlist por defecto: `pdf,docx,txt,md` (`CORPUS_EXTENSIONS`). El resto se salta (xlsx, mp4, png, …).
+
+```bash
+cd backend
+source .venv/bin/activate
+# editar backend/.env → CORPUS_ROOT=…  OPENAI_API_KEY=…
+python -m app.ingestion.run_ingest
+# re-ingerir paths ya existentes:
+python -m app.ingestion.run_ingest --force
+```
+
 Ejemplo de búsqueda:
 
 ```bash
@@ -136,7 +153,7 @@ Scripts: `dev`, `build`, `start`, `lint`.
 ## Estado actual / gaps
 
 - Sin package/workspace root; cada carpeta se instala y corre por separado.
-- RAG mínimo: Alembic + `POST /api/v1/search` + seed fixture; falta corpus Metropol real, `/answer` y agentes.
+- RAG: Alembic + `POST /api/v1/search` + ingest CLI (`app.ingestion`); falta `/answer` y agentes.
 - Items CRUD sigue en memoria.
 - Sin cliente HTTP ni tipos compartidos entre front y back.
 - Astryx en `package.json` pero no cableado en `layout.tsx` / `globals.css`.

@@ -16,9 +16,13 @@ class OpenAIEmbedder:
         response = self._client.embeddings.create(model=self._model, input=[text])
         return list(response.data[0].embedding)
 
-    def embed_many(self, texts: list[str]) -> list[list[float]]:
+    def embed_many(self, texts: list[str], *, batch_size: int = 64) -> list[list[float]]:
         if not texts:
             return []
-        response = self._client.embeddings.create(model=self._model, input=texts)
-        by_index = {item.index: list(item.embedding) for item in response.data}
-        return [by_index[i] for i in range(len(texts))]
+        vectors: list[list[float]] = []
+        for start in range(0, len(texts), batch_size):
+            batch = texts[start : start + batch_size]
+            response = self._client.embeddings.create(model=self._model, input=batch)
+            by_index = {item.index: list(item.embedding) for item in response.data}
+            vectors.extend(by_index[i] for i in range(len(batch)))
+        return vectors
