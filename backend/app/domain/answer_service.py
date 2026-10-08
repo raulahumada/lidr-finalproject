@@ -10,6 +10,7 @@ from app.foundation.llm.chat import ChatClient
 from app.foundation.prompts.loader import render_answer_prompts
 from app.generation.cag.exact import ExactAnswerCache
 from app.generation.cag.semantic import SemanticAnswerCache
+from app.generation.rag.context_blocks import ContextBlock, build_context, fit_to_budget
 from app.generation.rag.knowledge_pack import get_default_knowledge_pack
 from app.generation.rag.retriever import SemanticRetriever
 from app.schemas.answer import AnswerResponse, Citation
@@ -34,6 +35,7 @@ class AnswerService:
         knowledge_pack: str,
         prompt_version: str,
         default_k: int,
+        context_max_tokens: int = 3500,
     ) -> None:
         self.retriever = retriever
         self.chat = chat
@@ -42,6 +44,7 @@ class AnswerService:
         self.knowledge_pack = knowledge_pack
         self.prompt_version = prompt_version
         self.default_k = default_k
+        self.context_max_tokens = context_max_tokens
 
     def answer(self, *, question: str, k: int | None = None) -> AnswerResponse:
         started = time.perf_counter()
@@ -86,24 +89,25 @@ class AnswerService:
                 no_evidence=True,
             )
 
-        chunk_dicts = [
-            {
-                "source_path": hit.source_path,
-                "content": hit.content,
-                "chunk_id": hit.chunk_id,
-            }
-            for hit in search.results
-        ]
-        system, user = render_answer_prompts(
-            version=self.prompt_version,
-            knowledge_pack=self.knowledge_pack,
-            question=question,
-            retrieved_chunks=chunk_dicts,
+        blocks = fit_to_budget(
+            search.results, max_tokens=self.context_max_tokens
         )
+        if not blocks:
+            return AnswerResponse(
+                question=question,
+                answer=_NO_EVIDENCE,
+                citations=[],
+                cached="false",
+                prompt_version=self.prompt_version,
+                k=resolved_k,
+                latency_ms=self._elapsed_ms(started),
+                no_evidence=True,
+            )
+
+        system, user = self._render_prompts(question=question, blocks=blocks)
         raw = self.chat.complete_json(system=system, user=user)
         answer_text = str(raw.get("answer") or "").strip() or _NO_EVIDENCE
-        indices = raw.get("citation_indices") or []
-        citations = self._citations_from_indices(search.results, indices)
+        citations = self._citations_from_model(blocks, raw)
 
         response = AnswerResponse(
             question=question,
@@ -128,38 +132,85 @@ class AnswerService:
             )
         return response
 
+    def _render_prompts(
+        self, *, question: str, blocks: list[ContextBlock]
+    ) -> tuple[str, str]:
+        if self.prompt_version == "v1":
+            chunk_dicts = [
+                {
+                    "source_path": block.hit.source_path,
+                    "content": block.hit.content,
+                    "chunk_id": block.hit.chunk_id,
+                }
+                for block in blocks
+            ]
+            return render_answer_prompts(
+                version="v1",
+                knowledge_pack=self.knowledge_pack,
+                question=question,
+                retrieved_chunks=chunk_dicts,
+            )
+        return render_answer_prompts(
+            version=self.prompt_version,
+            knowledge_pack=self.knowledge_pack,
+            question=question,
+            context=build_context(blocks),
+        )
+
     @staticmethod
     def _elapsed_ms(started: float) -> int:
         return int((time.perf_counter() - started) * 1000)
 
     @staticmethod
-    def _citations_from_indices(
-        hits: list[SearchHit], indices: Any
+    def _hit_to_citation(hit: SearchHit) -> Citation:
+        return Citation(
+            chunk_id=hit.chunk_id,
+            document_id=hit.document_id,
+            source_path=hit.source_path,
+            document_type=hit.document_type,
+            score=hit.score,
+            excerpt=hit.content[:400],
+            metadata=hit.metadata,
+        )
+
+    @classmethod
+    def _citations_from_model(
+        cls, blocks: list[ContextBlock], raw: dict[str, Any]
     ) -> list[Citation]:
+        by_chunk_id = {block.hit.chunk_id: block.hit for block in blocks}
         citations: list[Citation] = []
-        if not isinstance(indices, list):
-            return citations
         seen: set[int] = set()
-        for raw_idx in indices:
-            try:
-                idx = int(raw_idx)
-            except (TypeError, ValueError):
-                continue
-            if idx < 0 or idx >= len(hits) or idx in seen:
-                continue
-            seen.add(idx)
-            hit = hits[idx]
-            citations.append(
-                Citation(
-                    chunk_id=hit.chunk_id,
-                    document_id=hit.document_id,
-                    source_path=hit.source_path,
-                    document_type=hit.document_type,
-                    score=hit.score,
-                    excerpt=hit.content[:400],
-                    metadata=hit.metadata,
-                )
-            )
+
+        def add_hit(hit: SearchHit) -> None:
+            if hit.chunk_id in seen:
+                return
+            seen.add(hit.chunk_id)
+            citations.append(cls._hit_to_citation(hit))
+
+        ids = raw.get("citation_ids")
+        if isinstance(ids, list):
+            for raw_id in ids:
+                try:
+                    chunk_id = int(raw_id)
+                except (TypeError, ValueError):
+                    continue
+                hit = by_chunk_id.get(chunk_id)
+                if hit is not None:
+                    add_hit(hit)
+
+        indices = raw.get("citation_indices")
+        if isinstance(indices, list):
+            for raw_idx in indices:
+                try:
+                    idx = int(raw_idx)
+                except (TypeError, ValueError):
+                    continue
+                # Prefer block index; also accept mistaken chunk_id in indices.
+                if 0 <= idx < len(blocks):
+                    add_hit(blocks[idx].hit)
+                elif idx in by_chunk_id:
+                    add_hit(by_chunk_id[idx])
+
         return citations
 
     def _from_cache_payload(

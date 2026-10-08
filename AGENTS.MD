@@ -131,7 +131,9 @@ curl -s http://localhost:8000/api/v1/search \
 
 Compose debe incluir **Redis Stack** (`redis` en `docker-compose.yml`) además de Postgres. `REDIS_URL=redis://localhost:6379` en `backend/.env`.
 
-Flujo: caché exacta → caché semántica (`SEMANTIC_CACHE_LOG_ONLY=true` por defecto) → retrieve → pack Metropol en system (Jinja) → LLM → citas.
+Flujo: caché exacta → caché semántica (`SEMANTIC_CACHE_LOG_ONLY=true` por defecto) → retrieve → presupuesto de contexto → pack Metropol + Jinja (`ANSWER_PROMPT_VERSION=v2` por defecto) → LLM → citas validadas.
+
+Al cambiar prompts o `ANSWER_PROMPT_VERSION`, las claves de caché exacta cambian con la versión; si iterás el mismo `v2` y ves respuestas viejas: `docker compose exec redis redis-cli FLUSHDB`.
 
 ```bash
 docker compose up -d redis
