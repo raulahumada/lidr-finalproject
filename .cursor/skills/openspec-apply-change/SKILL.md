@@ -150,6 +150,8 @@ What would you like to do?
 - Update task checkbox immediately after completing each task
 - Pause on errors, blockers, or unclear requirements - don't guess
 - Use contextFiles from CLI output, don't assume specific file names
+- Prefer Graphify (`graphify query` / `path` / `explain`) when exploring existing modules for a task and `graphify-out/graph.json` exists
+- After finishing apply (or a batch of code tasks), run `graphify update .` if the graph exists so hubs stay current
 
 **Fluid Workflow Integration**
 

@@ -18,16 +18,19 @@ Prespec: draft grounded in the course reference architecture, then OpenSpec prop
      `bash .cursor/skills/openspec-prespec/scripts/sync-reference.sh`  
      (Windows: sibling `sync-reference.ps1` if PowerShell is available)
    - Classify surface: `backend` | `frontend` | `both`
+   - Ground with **Graphify** when `graphify-out/graph.json` exists:  
+     `graphify query "<intent>"` (optional `path` / `explain`) before broad Grep/Glob
    - Ground in this monorepo + `.reference/ai-engineering/`
-   - Write `openspec/drafts/<name>.md`
+   - Write `openspec/drafts/<name>.md` (include **Graphify notes**)
    - Show summary and **wait** for user edits / approval
 
 2. **Iterate** — apply user feedback only to the draft until they approve
 
 3. **Phase B — Propose** — only after explicit approval ("dale", "ok", "arrancá openspec", "propose", …)
    - Same artifact pipeline as `/opsx-propose` (`openspec new change`, instructions, proposal/design/specs/tasks)
-   - Seed from the approved draft; split tasks by Backend / Frontend when `both`
+   - Seed from the approved draft (incl. Graphify notes); split tasks by Backend / Frontend when `both`
    - If `backend` | `both`: contrast against `docs/python-best-practices.md` (Practices check in proposal; layer map in design)
+   - Design should cite Graphify-backed module relationships; remind to run `graphify update .` after `/opsx-apply`
 
 ## Input
 
@@ -42,3 +45,4 @@ If missing, ask what they want to change.
 - Course repo = architecture reference; domain = Metropol Fintech
 - Always state primary surface (and secondary if any)
 - Backend|both must read and contrast `docs/python-best-practices.md`
+- Prefer Graphify before broad codebase search when the local graph exists; record notes in the draft

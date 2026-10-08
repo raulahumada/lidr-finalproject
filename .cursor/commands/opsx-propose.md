@@ -31,13 +31,18 @@ When ready to implement, run /opsx:apply
 
    **IMPORTANT**: Do NOT proceed without understanding what the user wants to build.
 
-2. **Create the change directory**
+2. **Ground with Graphify** (when the change touches existing code/architecture)
+   - If `graphify-out/graph.json` exists: `graphify query "<intent>"` (optional `path` / `explain`) before broad Grep/Glob
+   - Fold hubs/paths into design decisions; do not dump raw query output into artifacts
+   - If the graph is missing: note it and continue (optional `graphify update .` or `/graphify .`)
+
+3. **Create the change directory**
    ```bash
    openspec new change "<name>"
    ```
    This creates a scaffolded change in the planning home resolved by the CLI with `.openspec.yaml`.
 
-3. **Get the artifact build order**
+4. **Get the artifact build order**
    ```bash
    openspec status --change "<name>" --json
    ```
@@ -46,7 +51,7 @@ When ready to implement, run /opsx:apply
    - `artifacts`: list of all artifacts with their status and dependencies
    - `planningHome`, `changeRoot`, `artifactPaths`, and `actionContext`: path and scope context. Use these instead of assuming repo-local paths.
 
-4. **Create artifacts in sequence until apply-ready**
+5. **Create artifacts in sequence until apply-ready**
 
    Use the **TodoWrite tool** to track progress through the artifacts.
 
@@ -78,7 +83,7 @@ When ready to implement, run /opsx:apply
       - Use **AskUserQuestion tool** to clarify
       - Then continue with creation
 
-5. **Show final status**
+6. **Show final status**
    ```bash
    openspec status --change "<name>"
    ```
@@ -88,8 +93,9 @@ When ready to implement, run /opsx:apply
 After completing all artifacts, summarize:
 - Change name and location
 - List of artifacts created with brief descriptions
+- Graphify grounding used (or skipped + why)
 - What's ready: "All artifacts created! Ready for implementation."
-- Prompt: "Run `/opsx:apply` to start implementing."
+- Prompt: "Run `/opsx:apply` to start implementing." Remind `graphify update .` after apply.
 
 **Artifact Creation Guidelines**
 
@@ -113,9 +119,15 @@ If the change touches `backend/` or the surface is `backend` / `both`:
 3. In `design.md`, map new modules to the layers described in that doc; call out layer-rule tension.
 4. Do not invent parallel API layouts that contradict the doc without documenting the deviation.
 
+**Graphify**
+
+- Prefer Graphify before broad search when `graphify-out/graph.json` exists
+- Design should cite Graphify-backed module relationships; prefer extending existing hubs over new islands
+
 **Guardrails**
 - Create ALL artifacts needed for implementation (as defined by schema's `apply.requires`)
 - Always read dependency artifacts before creating a new one
+- Prefer Graphify when the local graph exists
 - If context is critically unclear, ask the user - but prefer making reasonable decisions to keep momentum
 - If a change with that name already exists, ask if user wants to continue it or create a new one
 - Verify each artifact file exists after writing before proceeding to next

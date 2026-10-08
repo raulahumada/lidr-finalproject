@@ -186,3 +186,4 @@ Scripts: `dev`, `build`, `start`, `lint`.
 6. Documentación de agente de producto vive aquí; reglas específicas de front viven en `frontend/AGENTS.md`.
 7. Cambios alineados a la arquitectura del curso: `/opsx-prespec` (draft + sync referencia + surface front|back|both → OpenSpec propose). Implementar con `/opsx-apply`.
 8. Backend Python: seguir y contrastar `docs/python-best-practices.md` en `/opsx-propose` y `/opsx-prespec` (sección Practices check).
+9. **Graphify** (grafo local en `graphify-out/`): en `/opsx-prespec` y `/opsx-propose`, si existe `graphify-out/graph.json`, usar `graphify query` / `path` / `explain` antes de Grep/Glob amplios; registrar notas en el draft. Tras cambios de código: `graphify update .`.

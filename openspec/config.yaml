@@ -21,13 +21,21 @@ context: |
   Cambios nuevos: preferir /opsx-prespec (draft + sync referencia del curso + surface front|back|both)
   antes de /opsx-propose cuando el cambio deba alinearse a la arquitectura del curso.
 
+  Knowledge graph local (Graphify): graphify-out/ (CLI graphify; regla .cursor/rules/graphify.mdc).
+  En /opsx-prespec y /opsx-propose, si existe graphify-out/graph.json, orientar con
+  graphify query / path / explain antes de explorar el código a ciegas; preferir extender
+  hubs/módulos ya presentes en el grafo. Tras implementar, refrescar con graphify update .
+
 # Per-artifact rules (quote scalars that contain ": " so YAML keeps them as strings)
 rules:
   proposal:
     - "If the change touches backend/ or surface is backend|both, read docs/python-best-practices.md and include a \"Practices check\" section: aligned points, conscious deviations (with why), and risks if ignored."
     - "Always include a Non-goals section."
+    - "When Graphify was used, briefly note which existing areas/hubs the graph pointed at (Impact or short Graphify notes); do not paste raw query dumps."
   design:
     - "If backend|both: map new modules to layers from docs/python-best-practices.md (and course reference shape). Call out any layer-rule tension."
+    - "When graphify-out/graph.json exists, use Graphify-backed relationships to justify where code lands; prefer extending existing modules over inventing parallel islands."
   tasks:
     - "When both surfaces, group tasks under Backend and Frontend headings."
     - "Backend tasks should not put business/LLM logic directly in routers unless the practices doc exception applies."
+    - "If the change reshapes modules, include a final optional task to run graphify update . so the knowledge graph stays current."
