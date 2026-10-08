@@ -27,6 +27,18 @@ class ChunkStore:
         stmt = select(DocumentRow.id).where(DocumentRow.source_path == source_path)
         return session.execute(stmt).scalar_one_or_none()
 
+    def delete_document_by_source_path(self, session: Session, source_path: str) -> bool:
+        """Delete document (and CASCADE chunks). Returns True if a row was removed."""
+        document_id = self.find_document_id(session, source_path)
+        if document_id is None:
+            return False
+        document = session.get(DocumentRow, document_id)
+        if document is None:
+            return False
+        session.delete(document)
+        session.flush()
+        return True
+
     def persist_document_with_chunks(
         self,
         session: Session,
