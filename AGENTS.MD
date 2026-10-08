@@ -108,12 +108,14 @@ El corpus del cliente **no** vive en el repo. Apuntá `CORPUS_ROOT` en `backend/
 
 Allowlist por defecto: `pdf,docx,txt,md` (`CORPUS_EXTENSIONS`). El resto se salta (xlsx, mp4, png, …).
 
+Chunking: **recursive** (~512 tokens) para pdf/docx/txt; **headers Markdown** para `.md`. Parse sigue con `pypdf` / `python-docx`. Tras cambiar el chunker, re-ingerí con `--force` para regenerar embeddings.
+
 ```bash
 cd backend
 source .venv/bin/activate
 # editar backend/.env → CORPUS_ROOT=…  OPENAI_API_KEY=…
 python -m app.ingestion.run_ingest
-# re-ingerir paths ya existentes:
+# re-ingerir (p. ej. después de upgrade de chunking):
 python -m app.ingestion.run_ingest --force
 ```
 

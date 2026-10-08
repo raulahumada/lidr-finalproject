@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from app.generation.rag.chunking import chunk_text
+from app.generation.rag.chunking import chunk_document
 from app.ingestion.loaders import iter_corpus_files
 from app.ingestion.parsers.md import MdParser
 from app.ingestion.parsers.registry import default_registry
@@ -42,7 +42,10 @@ def test_walker_skips_unknown_extensions(tmp_path: Path) -> None:
 
 
 def test_chunker_splits_long_text() -> None:
-    text = "\n\n".join(f"Parrafo {i} sobre Metropol Fintech omnicanal." for i in range(40))
-    chunks = chunk_text(text, max_chars=120, overlap=20)
+    text = "\n\n".join(
+        f"Parrafo {i} sobre Metropol Fintech omnicanal cobranzas ventas. " * 10
+        for i in range(30)
+    )
+    chunks = chunk_document(text, extension="txt")
     assert len(chunks) > 1
-    assert all(c.strip() for c in chunks)
+    assert all(c.content.strip() for c in chunks)
