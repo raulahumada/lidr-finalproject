@@ -111,17 +111,7 @@ fix(frontend): correct API base URL for local backend
 docs: add conventional commits guide for front and back
 ```
 
-**Commit command (PowerShell):**
-
-```powershell
-git commit -m @"
-feat(scope): short description
-
-Optional body explaining why.
-"@
-```
-
-**Commit command (bash):**
+**Commit command (bash / macOS default):**
 
 ```bash
 git commit -m "$(cat <<'EOF'
@@ -130,6 +120,16 @@ feat(scope): short description
 Optional body explaining why.
 EOF
 )"
+```
+
+Windows (PowerShell), only if that shell is what you are using:
+
+```powershell
+git commit -m @"
+feat(scope): short description
+
+Optional body explaining why.
+"@
 ```
 
 After commit: `git status` to verify clean/success. If a hook fails, fix and create a **new** commit (do not amend unless amend rules allow).
@@ -176,18 +176,6 @@ gh pr create --base development --title "feat(scope): short description" --body 
 
 EOF
 )"
-```
-
-PowerShell body:
-
-```powershell
-gh pr create --base development --title "feat(scope): short description" --body @"
-## Summary
-- Bullet one
-
-## Test plan
-- [ ] Step one
-"@
 ```
 
 If `gh` fails auth, stop and report the error; do not open a web PR manually unless asked.

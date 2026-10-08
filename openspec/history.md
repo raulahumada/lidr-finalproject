@@ -2,6 +2,29 @@
 
 Changelog of promoted changes in this monorepo.
 
+## 2026-10-08 — `add-rag-chunks-and-search`
+
+**Status:** archived → `openspec/changes/archive/2026-10-08-add-rag-chunks-and-search/`  
+**Surface:** backend  
+**Synced to:** `openspec/specs/rag-chunks/spec.md`, `openspec/specs/semantic-search/spec.md`
+
+### What landed
+
+- Alembic under `backend/` with migration for `documents` / `chunks` (`Vector(1536)`, no HNSW).
+- Layers `foundation/persistence` + `generation/rag` + thin `POST /api/v1/search`.
+- OpenAI `text-embedding-3-small` settings; fixture seed CLI; pytest for search contract.
+- Ops docs in `AGENTS.md` (migrate, seed, curl); macOS bash sync-reference script.
+
+### Why
+
+First usable RAG slice: persist + semantic retrieve over pgvector, without answer generation or agents yet.
+
+### Follow-ups (out of this change)
+
+- Ingest real Metropol Fintech corpus (user path).
+- `POST /answer` with citations; then multiagent orchestration.
+- Do not commit `backend/.env`.
+
 ## 2026-09-30 — `add-local-pgvector`
 
 **Status:** archived → `openspec/changes/archive/2026-09-30-add-local-pgvector/`  

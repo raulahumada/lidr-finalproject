@@ -29,10 +29,14 @@ docker compose ps   # postgres healthy
 Verificar extensión `vector` (user/db = valores de tu `.env`):
 
 ```bash
+# macOS / zsh o bash: cargá vars del .env de la raíz si hace falta
+set -a && source .env && set +a
 docker compose exec postgres psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -c "SELECT extname FROM pg_extension WHERE extname = 'vector';"
 ```
 
-En PowerShell: `docker compose exec postgres psql -U entrega -d entrega_lidr -c "SELECT …"` usando el user/db que pusiste en `.env`.
+Si preferís literales: `docker compose exec postgres psql -U <POSTGRES_USER> -d <POSTGRES_DB> -c "SELECT …"` con los valores de tu `.env`.
+
+Scripts de agentes (prespec, etc.) asumen **bash en macOS**; no dependen de PowerShell.
 
 - **API / tools en el host:** `DATABASE_URL` en `backend/.env` (plantilla `backend/.env.example`); debe usar el mismo user/password/db que el Compose root `.env`.
 - **pgAdmin:** http://localhost:5050 — login = `PGADMIN_DEFAULT_EMAIL` / `PGADMIN_DEFAULT_PASSWORD` de tu `.env`.
@@ -51,29 +55,60 @@ Stack: FastAPI, Uvicorn, Pydantic Settings, python-dotenv.
 | Path | Rol |
 |------|-----|
 | `app/main.py` | Factory `create_app()`, CORS, monta router |
-| `app/config.py` | Settings desde `.env` (`get_settings()` cacheado), incluye `database_url` |
+| `app/config.py` | Settings desde `.env` (`get_settings()` cacheado), incluye `database_url` + embeddings |
+| `app/dependencies.py` | Composition root (retriever, etc.) |
 | `app/api/router.py` | Agrega routers de rutas |
 | `app/api/routes/health.py` | `GET /api/v1/health` |
 | `app/api/routes/items.py` | CRUD `/api/v1/items` en memoria |
-| `app/schemas/item.py` | `Item`, `ItemCreate`, `ItemUpdate` |
+| `app/api/routes/search.py` | `POST /api/v1/search` (semántico sobre chunks) |
+| `app/foundation/persistence/` | SQLAlchemy engine, modelos `documents`/`chunks`, store |
+| `app/generation/rag/` | Embedder OpenAI, retriever, seed fixture |
+| `app/schemas/` | Contratos Pydantic (items, search) |
+| `alembic/` | Migraciones (pgvector chunks) |
 | `.env.example` | Plantilla de env |
 
 API prefix por defecto: `/api/v1`. Docs: `/docs`.
 
 CORS por defecto: `http://localhost:3000`, `http://localhost:5173`.
 
-**Items:** store en memoria (`dict`); se pierde al reiniciar. Sin ORM/Alembic todavía; `DATABASE_URL` ya apunta al Postgres local.
+**Python:** 3.10+ (recomendado 3.12 vía Homebrew). Crear venv: `cd backend && python3.12 -m venv .venv && source .venv/bin/activate && pip install -r requirements.txt`.
+
+**Items:** store en memoria (`dict`); se pierde al reiniciar.
+
+**RAG (chunks + search):** tablas `documents` / `chunks` vía Alembic; embeddings `text-embedding-3-small` (1536-d). Sin `OPENAI_API_KEY`, search responde **503**. Corpus vacío → **200** con `results: []`.
 
 ### Correr backend
 
 ```bash
 cd backend
-# copiar .env.example → .env si hace falta
-# activar venv si existe (.venv)
+cp .env.example .env   # si hace falta; alinear DATABASE_URL con root Compose
+# editar OPENAI_API_KEY=
+source .venv/bin/activate   # o: python3.12 -m venv .venv && …
 uvicorn app.main:app --reload
 ```
 
 Dependencias: `requirements.txt`.
+
+### Migraciones + seed + search (macOS / bash)
+
+Con Postgres Compose healthy:
+
+```bash
+cd backend
+source .venv/bin/activate
+alembic upgrade head
+python -m app.generation.rag.seed_fixture   # requiere OPENAI_API_KEY
+```
+
+Ejemplo de búsqueda:
+
+```bash
+curl -s http://localhost:8000/api/v1/search \
+  -H 'Content-Type: application/json' \
+  -d '{"query":"cobranzas handoff","k":5}' | python3 -m json.tool
+```
+
+Tests: `cd backend && .venv/bin/python -m pytest -q`.
 
 ## Frontend (`frontend/`)
 
@@ -101,7 +136,8 @@ Scripts: `dev`, `build`, `start`, `lint`.
 ## Estado actual / gaps
 
 - Sin package/workspace root; cada carpeta se instala y corre por separado.
-- Sin persistencia (items en memoria).
+- RAG mínimo: Alembic + `POST /api/v1/search` + seed fixture; falta corpus Metropol real, `/answer` y agentes.
+- Items CRUD sigue en memoria.
 - Sin cliente HTTP ni tipos compartidos entre front y back.
 - Astryx en `package.json` pero no cableado en `layout.tsx` / `globals.css`.
 - Metadata del front aún dice "Create Next App".
