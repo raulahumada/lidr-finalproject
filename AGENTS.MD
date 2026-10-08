@@ -127,6 +127,21 @@ curl -s http://localhost:8000/api/v1/search \
   -d '{"query":"cobranzas handoff","k":5}' | python3 -m json.tool
 ```
 
+### Answer (RAG + Knowledge CAG + Response CAG)
+
+Compose debe incluir **Redis Stack** (`redis` en `docker-compose.yml`) además de Postgres. `REDIS_URL=redis://localhost:6379` en `backend/.env`.
+
+Flujo: caché exacta → caché semántica (`SEMANTIC_CACHE_LOG_ONLY=true` por defecto) → retrieve → pack Metropol en system (Jinja) → LLM → citas.
+
+```bash
+docker compose up -d redis
+cd backend && source .venv/bin/activate
+# OPENAI_API_KEY + REDIS_URL en backend/.env
+curl -s http://localhost:8000/api/v1/answer \
+  -H 'Content-Type: application/json' \
+  -d '{"question":"¿Cómo es el handoff de cobranzas con Tenela?","k":5}' | python3 -m json.tool
+```
+
 Tests: `cd backend && .venv/bin/python -m pytest -q`.
 
 ## Frontend (`frontend/`)

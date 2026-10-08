@@ -18,12 +18,21 @@ class Settings(BaseSettings):
     # Host-run API → Compose Postgres on localhost:5432.
     # Set DATABASE_URL in backend/.env (see backend/.env.example); no secrets in code.
     database_url: str = ""
-    # Embeddings (text-embedding-3-small, 1536-d). Empty key → search returns 503.
+    # Embeddings (text-embedding-3-small, 1536-d). Empty key → search/answer return 503.
     openai_api_key: str = ""
     embedding_model: str = "text-embedding-3-small"
+    chat_model: str = "gpt-4o-mini"
     # Local Metropol corpus (absolute path). Empty → ingest CLI refuses to run.
     corpus_root: str = ""
     corpus_extensions: str = "pdf,docx,txt,md"
+    # Response CAG (Redis Stack). Soft-fail if unreachable.
+    redis_url: str = "redis://localhost:6379"
+    answer_cache_ttl_seconds: int = 86400
+    semantic_cache_threshold: float = 0.92
+    semantic_cache_log_only: bool = True
+    answer_prompt_version: str = "v1"
+    answer_default_k: int = 5
+    knowledge_pack_max_tokens: int = 2048
 
     @property
     def cors_origins_list(self) -> list[str]:

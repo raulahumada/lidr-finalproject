@@ -1,4 +1,6 @@
-# Local cache of https://github.com/LIDR-academy/ai-engineering (see openspec-prespec)
+# Local reference caches (never commit) — see openspec-prespec sync scripts
+# - .reference/ai-engineering  → LIDR-academy/ai-engineering (course)
+# - .reference/lidr-master     → cahumada/lidr-master (peer Knowledge CAG / answer)
 .reference/
 
 # OS / editor

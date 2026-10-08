@@ -1,0 +1,13 @@
+Pregunta:
+{{ question }}
+
+Pasajes recuperados:
+{% if retrieved_chunks %}
+{% for chunk in retrieved_chunks %}
+[{{ loop.index0 }}] source={{ chunk.source_path }}
+{{ chunk.content }}
+
+{% endfor %}
+{% else %}
+(ninguno)
+{% endif %}
