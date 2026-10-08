@@ -2,6 +2,28 @@
 
 Changelog of promoted changes in this monorepo.
 
+## 2026-10-08 — `add-rag-answer-with-cag`
+
+**Status:** archived → `openspec/changes/archive/2026-10-08-add-rag-answer-with-cag/`  
+**Surface:** backend  
+**Synced to:** `openspec/specs/rag-answer/spec.md`, `openspec/specs/response-cag/spec.md`, `openspec/specs/knowledge-cag/spec.md`
+
+### What landed
+
+- `POST /api/v1/answer`: conductor (exact → semantic → RAG → Jinja + knowledge pack → LLM → citations)
+- Knowledge CAG (token-measured Metropol pack) + Response CAG (Redis Stack exact/semantic)
+- Jinja `answer/v1` prompts; Redis Stack in Compose; tests + AGENTS docs
+
+### Why
+
+Search alone returns chunks; product needs grounded answers with caches aligned to course + peer Knowledge CAG.
+
+### Follow-ups (out of this change)
+
+- Prompt v2 Cristian-style (numbered blocks, partial answers, Fuentes citadas)
+- Multi-agent / LangGraph orchestration
+- Semantic cache `log_only=false` after calibration
+
 ## 2026-10-08 — `upgrade-rag-chunking`
 
 **Status:** archived → `openspec/changes/archive/2026-10-08-upgrade-rag-chunking/`  
