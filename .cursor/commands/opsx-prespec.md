@@ -14,8 +14,9 @@ Prespec: draft grounded in the course reference architecture, then OpenSpec prop
 ## Flow
 
 1. **Phase A — Draft** (no OpenSpec change yet)
-   - Sync course reference:  
-     `powershell -NoProfile -File .cursor/skills/openspec-prespec/scripts/sync-reference.ps1`
+   - Sync course reference (macOS/Linux):  
+     `bash .cursor/skills/openspec-prespec/scripts/sync-reference.sh`  
+     (Windows: sibling `sync-reference.ps1` if PowerShell is available)
    - Classify surface: `backend` | `frontend` | `both`
    - Ground in this monorepo + `.reference/ai-engineering/`
    - Write `openspec/drafts/<name>.md`

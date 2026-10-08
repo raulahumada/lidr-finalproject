@@ -18,10 +18,17 @@ class Settings(BaseSettings):
     # Host-run API → Compose Postgres on localhost:5432.
     # Set DATABASE_URL in backend/.env (see backend/.env.example); no secrets in code.
     database_url: str = ""
+    # Embeddings (text-embedding-3-small, 1536-d). Empty key → search returns 503.
+    openai_api_key: str = ""
+    embedding_model: str = "text-embedding-3-small"
 
     @property
     def cors_origins_list(self) -> list[str]:
         return [origin.strip() for origin in self.cors_origins.split(",") if origin.strip()]
+
+    @property
+    def embeddings_configured(self) -> bool:
+        return bool(self.openai_api_key.strip())
 
 
 @lru_cache

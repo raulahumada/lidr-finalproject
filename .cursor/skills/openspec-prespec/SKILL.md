@@ -41,13 +41,19 @@ Override branch/path only if the user names another session or folder.
 
 ### Sync step (always at start of Phase A)
 
-Run the helper (PowerShell from repo root):
+Run the helper from repo root. **Default host is macOS/Linux (bash)** — do not assume PowerShell.
+
+```bash
+bash .cursor/skills/openspec-prespec/scripts/sync-reference.sh
+```
+
+Optional args: `bash …/sync-reference.sh <branch> <sparsePath>` (defaults: `session_16` `ai-service`).
+
+Windows only (if `powershell` / `pwsh` is available):
 
 ```powershell
 powershell -NoProfile -File .cursor/skills/openspec-prespec/scripts/sync-reference.ps1
 ```
-
-Optional: `-Branch session_16` `-SparsePath ai-service`.
 
 If the script fails, fall back to browsing the GitHub tree URL from `openspec/config.yaml` and note that the local cache is stale/missing. Continue with local monorepo + whatever reference you can read.
 

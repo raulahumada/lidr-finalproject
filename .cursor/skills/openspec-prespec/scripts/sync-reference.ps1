@@ -1,4 +1,7 @@
 # Sync course ai-engineering reference into .reference/ai-engineering
+# Windows / PowerShell only. On macOS/Linux use the bash sibling:
+#   bash .cursor/skills/openspec-prespec/scripts/sync-reference.sh
+#
 # Usage (from repo root):
 #   powershell -NoProfile -File .cursor/skills/openspec-prespec/scripts/sync-reference.ps1
 #   powershell -NoProfile -File .cursor/skills/openspec-prespec/scripts/sync-reference.ps1 -Branch session_16 -SparsePath ai-service
