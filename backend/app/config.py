@@ -34,6 +34,8 @@ class Settings(BaseSettings):
     answer_default_k: int = 5
     answer_context_max_tokens: int = 3500
     knowledge_pack_max_tokens: int = 2048
+    # Agentic answer: escalate when confidence is below this (0–1).
+    agentic_confidence_threshold: float = 0.55
 
     @property
     def cors_origins_list(self) -> list[str]:

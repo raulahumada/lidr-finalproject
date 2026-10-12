@@ -144,6 +144,26 @@ curl -s http://localhost:8000/api/v1/answer \
   -d '{"question":"¿Cómo es el handoff de cobranzas con Tenela?","k":5}' | python3 -m json.tool
 ```
 
+### Answer agentic (LangGraph)
+
+Pipeline fijo Metropol: `intent_framer` → `corpus_fetcher` → `grounded_composer` → `source_guard` → `escalation_gate`. Reusa retrieve/prompts v2 del path sync; **sin** Response CAG en el hot path. Checkpointer v1: **`MemorySaver`** (pausa/resume solo mientras viva el proceso Uvicorn; un reload pierde threads).
+
+Si confianza < `AGENTIC_CONFIDENCE_THRESHOLD` (default `0.55`), sin evidencia, o citas inválidas → **202** + `thread_id`; luego resume.
+
+```bash
+cd backend && source .venv/bin/activate
+# OPENAI_API_KEY en backend/.env
+curl -s -w '\nHTTP %{http_code}\n' http://localhost:8000/api/v1/answer/agentic \
+  -H 'Content-Type: application/json' \
+  -d '{"question":"¿Cómo es el handoff de cobranzas con Tenela?","k":5}' | python3 -m json.tool
+
+# Si status=awaiting_human_review (HTTP 202), retomá con el thread_id:
+curl -s http://localhost:8000/api/v1/answer/agentic/<thread_id>/resume \
+  -H 'Content-Type: application/json' \
+  -d '{"decision":"approve"}' | python3 -m json.tool
+# decision: approve | reject | adjust (+ adjusted_answer opcional)
+```
+
 Tests: `cd backend && .venv/bin/python -m pytest -q`.
 
 ## Frontend (`frontend/`)
@@ -172,7 +192,7 @@ Scripts: `dev`, `build`, `start`, `lint`.
 ## Estado actual / gaps
 
 - Sin package/workspace root; cada carpeta se instala y corre por separado.
-- RAG: Alembic + `POST /api/v1/search` + ingest CLI (`app.ingestion`); falta `/answer` y agentes.
+- RAG: Alembic + `POST /api/v1/search` + ingest + `POST /answer` + `POST /answer/agentic` (MemorySaver; follow-up: orchestrator + Postgres checkpointer).
 - Items CRUD sigue en memoria.
 - Sin cliente HTTP ni tipos compartidos entre front y back.
 - Astryx en `package.json` pero no cableado en `layout.tsx` / `globals.css`.
