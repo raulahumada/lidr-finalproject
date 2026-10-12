@@ -11,6 +11,7 @@ from openai import OpenAI
 
 from app.config import Settings, get_settings
 from app.domain.answer_service import AnswerService, build_knowledge_pack
+from app.domain.graph.runner import AgenticAnswerRunner
 from app.foundation.llm.chat import ChatClient
 from app.foundation.persistence.database import get_session_factory
 from app.foundation.persistence.repository import ChunkStore
@@ -93,3 +94,18 @@ def get_answer_service() -> Optional[AnswerService]:
         prompt_version=settings.answer_prompt_version,
         default_k=settings.answer_default_k,
     )
+
+
+def get_agentic_answer_runner() -> Optional[AgenticAnswerRunner]:
+    settings = get_settings()
+    if not settings.embeddings_configured:
+        return None
+    client = OpenAI(api_key=settings.openai_api_key)
+    embedder = OpenAIEmbedder(client=client, model=settings.embedding_model)
+    retriever = SemanticRetriever(
+        embedder=embedder,
+        session_factory=get_session_factory(),
+        store=get_chunk_store(),
+    )
+    chat = ChatClient(client, model=settings.chat_model)
+    return AgenticAnswerRunner(retriever=retriever, chat=chat, settings=settings)
