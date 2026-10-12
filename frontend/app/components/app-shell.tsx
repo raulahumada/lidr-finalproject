@@ -10,7 +10,7 @@ import {
   SideNavItem,
   SideNavSection,
 } from "@astryxdesign/core/SideNav";
-import { Box, Folder, Home, Settings } from "lucide-react";
+import { Box, Folder, Home, MessageSquare, Settings } from "lucide-react";
 
 export function AppShellLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
@@ -44,6 +44,12 @@ export function AppShellLayout({ children }: { children: React.ReactNode }) {
               icon={Folder}
               href="/items"
               isSelected={pathname.startsWith("/items")}
+            />
+            <SideNavItem
+              label="Respuesta"
+              icon={MessageSquare}
+              href="/answer"
+              isSelected={pathname.startsWith("/answer")}
             />
           </SideNavSection>
           <SideNavSection title="Sistema">

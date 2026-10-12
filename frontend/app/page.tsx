@@ -8,10 +8,11 @@ export default function Home() {
     <VStack gap={6}>
       <VStack gap={3}>
         <Heading level={1} type="display-3">
-          Inicio
+          Metropol AI
         </Heading>
         <Text type="large" color="secondary" textWrap="balance">
-          Shell con sidebar Astryx. El contenido de cada ruta vive acá adentro.
+          Shell Astryx con theme stone. Warm neutrals (piedra / pizarra) listos
+          para el chat y el resto de la consola.
         </Text>
       </VStack>
       <HStack gap={3}>

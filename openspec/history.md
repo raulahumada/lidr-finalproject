@@ -2,6 +2,27 @@
 
 Changelog of promoted changes in this monorepo.
 
+## 2026-10-12 — `add-answer-chat-ui`
+
+**Status:** archived → `openspec/changes/archive/2026-10-12-add-answer-chat-ui/`  
+**Surface:** frontend  
+**Synced to:** `openspec/specs/answer-chat-ui/spec.md`
+
+### What landed
+
+- Route `/answer` in Astryx shell: pregunta + optional `k` → `POST /api/v1/answer`
+- Thin client + loading / 503 / citations (`source_path`, `excerpt`); `NEXT_PUBLIC_API_BASE_URL`
+- Stone theme + CSS layer order fixed so StyleX is not overridden by Tailwind base
+
+### Why
+
+First product UI slice over the existing sync answer API (operators no longer need curl alone).
+
+### Follow-ups (out of this change)
+
+- Chat transcript UI (Astryx `ai-chat` + source citations inline) closer to peer console
+- `add-agentic-chat-ui` (E2): agentic + human resume
+
 ## 2026-10-08 — `improve-answer-prompts-v2`
 
 **Status:** archived → `openspec/changes/archive/2026-10-08-improve-answer-prompts-v2/`  
