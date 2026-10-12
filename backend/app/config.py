@@ -30,8 +30,9 @@ class Settings(BaseSettings):
     answer_cache_ttl_seconds: int = 86400
     semantic_cache_threshold: float = 0.92
     semantic_cache_log_only: bool = True
-    answer_prompt_version: str = "v1"
+    answer_prompt_version: str = "v2"
     answer_default_k: int = 5
+    answer_context_max_tokens: int = 3500
     knowledge_pack_max_tokens: int = 2048
 
     @property

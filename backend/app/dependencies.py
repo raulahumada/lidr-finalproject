@@ -92,4 +92,5 @@ def get_answer_service() -> Optional[AnswerService]:
         knowledge_pack=knowledge,
         prompt_version=settings.answer_prompt_version,
         default_k=settings.answer_default_k,
+        context_max_tokens=settings.answer_context_max_tokens,
     )
