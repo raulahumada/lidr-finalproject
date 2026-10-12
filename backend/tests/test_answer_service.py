@@ -62,7 +62,7 @@ def test_no_evidence_skips_llm() -> None:
         exact_cache=None,
         semantic_cache=None,
         knowledge_pack="## Qué es este pack y qué NO es\npack",
-        prompt_version="v1",
+        prompt_version="v2",
         default_k=3,
     )
     result = service.answer(question="algo inexistente")
@@ -82,7 +82,7 @@ def test_generate_and_exact_cache_hit() -> None:
         exact_cache=exact,  # type: ignore[arg-type]
         semantic_cache=None,
         knowledge_pack="## Qué es este pack y qué NO es\npack Metropol",
-        prompt_version="v1",
+        prompt_version="v2",
         default_k=3,
     )
     first = service.answer(question="¿Qué es Tenela?")
@@ -112,7 +112,7 @@ def test_semantic_log_only_does_not_serve() -> None:
         exact_cache=None,
         semantic_cache=LogOnlySemantic(),  # type: ignore[arg-type]
         knowledge_pack="## Qué es este pack y qué NO es\npack",
-        prompt_version="v1",
+        prompt_version="v2",
         default_k=3,
     )
     result = service.answer(question="Tenela")

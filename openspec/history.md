@@ -2,6 +2,26 @@
 
 Changelog of promoted changes in this monorepo.
 
+## 2026-10-08 — `improve-answer-prompts-v2`
+
+**Status:** archived → `openspec/changes/archive/2026-10-08-improve-answer-prompts-v2/`  
+**Surface:** backend  
+**Synced to:** `openspec/specs/rag-answer/spec.md`, `openspec/specs/knowledge-cag/spec.md`
+
+### What landed
+
+- Jinja `answer/v2` with partial-answer policy; numbered context blocks (`[id=chunk_id]` + path)
+- Token budget for retrieved context; citation validation against sent blocks
+- Default `ANSWER_PROMPT_VERSION=v2`; Redis flush docs when iterating prompts
+
+### Why
+
+Stronger grounding aligned to course provenance blocks + peer Q&A drafting rules.
+
+### Follow-ups (out of this change)
+
+- Agentic `/answer` (LangGraph + optional human gate), then front console
+
 ## 2026-10-08 — `add-rag-answer-with-cag`
 
 **Status:** archived → `openspec/changes/archive/2026-10-08-add-rag-answer-with-cag/`  
