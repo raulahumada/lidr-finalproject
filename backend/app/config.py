@@ -14,6 +14,9 @@ class Settings(BaseSettings):
     app_env: str = "development"
     debug: bool = True
     api_prefix: str = "/api/v1"
+    # Shared bearer for BFF/scripts. Empty = open API in non-production (warning).
+    # APP_ENV=production + empty token → refuse to start.
+    service_token: str = ""
     cors_origins: str = "http://localhost:3000,http://localhost:5173"
     # Host-run API → Compose Postgres on localhost:5432.
     # Set DATABASE_URL in backend/.env (see backend/.env.example); no secrets in code.

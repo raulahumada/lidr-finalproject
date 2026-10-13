@@ -20,12 +20,12 @@ import { Text } from "@astryxdesign/core/Text";
 import { TextInput } from "@astryxdesign/core/TextInput";
 import { Search } from "lucide-react";
 
-import { AnswerApiError } from "../lib/api/answer";
+import { AnswerApiError } from "../../lib/api/answer";
 import {
   postSearch,
   type SearchHit,
   type SearchResponse,
-} from "../lib/api/search";
+} from "../../lib/api/search";
 
 function leafPath(path: string): string {
   const parts = path.split("/");

@@ -41,12 +41,12 @@ export class AnswerApiError extends Error {
   }
 }
 
-const DEFAULT_API_BASE = "http://localhost:8000";
-
+/**
+ * Browser clients call the same-origin BFF (`/api/v1/...`).
+ * The BFF attaches SERVICE_TOKEN server-side — never use NEXT_PUBLIC_ for that secret.
+ */
 export function getApiBaseUrl(): string {
-  const raw = process.env.NEXT_PUBLIC_API_BASE_URL?.trim();
-  if (!raw) return DEFAULT_API_BASE;
-  return raw.replace(/\/$/, "");
+  return "";
 }
 
 export async function postAnswer(

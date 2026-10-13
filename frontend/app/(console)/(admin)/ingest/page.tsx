@@ -18,14 +18,14 @@ import { Switch } from "@astryxdesign/core/Switch";
 import { Text } from "@astryxdesign/core/Text";
 import { Database, Search } from "lucide-react";
 
-import { AnswerApiError } from "../lib/api/answer";
+import { AnswerApiError } from "../../../lib/api/answer";
 import {
   getIngestStats,
   runIngestWithProgress,
   type IngestRunView,
   type IngestStats,
   type IngestSummary,
-} from "../lib/api/ingest";
+} from "../../../lib/api/ingest";
 
 function SummaryBlock({ summary }: { summary: IngestSummary }) {
   return (

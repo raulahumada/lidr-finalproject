@@ -38,9 +38,40 @@ RULES:
   upgrade --from <old version> --apply   run after a dependency bump
 <!-- ASTRYX:END -->
 
-## API base URL
+## Auth + BFF (dual authentication)
 
-Chat UI (`/answer`) calls FastAPI at `NEXT_PUBLIC_API_BASE_URL` (default `http://localhost:8000`). Copy `.env.example` → `.env.local` if you need a different origin. Backend CORS already allows `http://localhost:3000`.
+Two layers (not interchangeable):
+
+1. **Console people** — Auth.js (email/password; Google deferred) + Prisma identity DB (`AUTH_DATABASE_URL`).
+2. **Service token** — FastAPI `SERVICE_TOKEN`; the Next BFF attaches `Authorization: Bearer` server-side. Never `NEXT_PUBLIC_SERVICE_TOKEN`.
+
+Browser clients call same-origin `/api/v1/...` (`getApiBaseUrl()` → `""`). Route handler `app/api/v1/[...path]` relays to `AI_SERVICE_URL` with the token + `X-Console-User`.
+
+### Setup (identity DB)
+
+```bash
+# From repo root — second database on the same Compose Postgres:
+set -a && source .env && set +a
+docker compose exec postgres psql -U "$POSTGRES_USER" -c "CREATE DATABASE entrega_lidr_auth;"
+
+cd frontend
+cp .env.example .env.local   # AUTH_SECRET, AUTH_DATABASE_URL, AI_SERVICE_URL, SERVICE_TOKEN
+npm run db:generate
+npm run db:migrate
+AUTH_SEED_PASSWORD='your-long-password' npm run seed:admin -- admin@example.com
+npm run dev
+```
+
+Roles: `usuario` (answer/search/home) · `administrador` (+ settings/ingest/agents/users). New self-registrations are **disabled** until an admin enables them on `/users`.
+
+### Modes
+
+| Mode | `SERVICE_TOKEN` (backend + frontend `.env.local`) | Console |
+|------|--------------------------------------------------|---------|
+| Open local | empty | still requires Auth.js login; FastAPI accepts curl without Bearer |
+| Locked | same non-empty secret in both | UI via login; curl to `:8000` without Bearer → 401; `GET /api/v1/health` → 200 |
+
+Smoke locked: seed admin → login → `/ingest` ok as admin; open `/settings` as `usuario` → redirect; `curl :8000/api/v1/search` without Bearer → 401.
 
 ## Home (`/`)
 

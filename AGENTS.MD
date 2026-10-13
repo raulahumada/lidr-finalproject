@@ -89,6 +89,19 @@ source .venv/bin/activate   # o: python3.12 -m venv .venv && …
 uvicorn app.main:app --reload
 ```
 
+### Service token (BFF / scripts)
+
+`SERVICE_TOKEN` en `backend/.env`: vacío en local → API abierta + warning al boot; con valor → hace falta `Authorization: Bearer <token>` en todo salvo `GET /api/v1/health`. `APP_ENV=production` sin token → el proceso **no arranca**. El front no debe usar `NEXT_PUBLIC_` para este secreto (lo pone el BFF de Next).
+
+```bash
+# con token configurado:
+curl -s http://localhost:8000/api/v1/health
+curl -s http://localhost:8000/api/v1/search \
+  -H "Authorization: Bearer $SERVICE_TOKEN" \
+  -H 'Content-Type: application/json' \
+  -d '{"query":"cobranzas","k":3}'
+```
+
 Dependencias: `requirements.txt`.
 
 ### Migraciones + seed + search (macOS / bash)
@@ -290,7 +303,8 @@ Scripts: `dev`, `build`, `start`, `lint`.
 ## Estado actual / gaps
 
 - Sin package/workspace root; cada carpeta se instala y corre por separado.
-- RAG: Alembic + `POST /api/v1/search` + ingest CLI/HTTP (`/api/v1/ingest/*` + UI `/ingest`) + `POST /answer` + `POST /answer/agentic` (+ `/start` + `/progress` + chat sessions + conversation memory) + runtime models (`/config/models` + `/settings`); Postgres checkpointer + activity log in-process; follow-up: auth.
+- RAG: Alembic + `POST /api/v1/search` + ingest CLI/HTTP (`/api/v1/ingest/*` + UI `/ingest`) + `POST /answer` + `POST /answer/agentic` (+ `/start` + `/progress` + chat sessions + conversation memory) + runtime models (`/config/models` + `/settings`); Postgres checkpointer + activity log in-process.
+- Dual auth: FastAPI `SERVICE_TOKEN` + Next Auth.js/Prisma identity + same-origin BFF (`/api/v1/*`).
 - Items CRUD sigue en memoria.
 - Front chat agentic multi-sesión en `/answer` (Astryx); sin package de tipos compartidos monorepo.
 

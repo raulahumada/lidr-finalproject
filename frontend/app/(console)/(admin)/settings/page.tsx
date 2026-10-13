@@ -15,12 +15,12 @@ import {
 import { Selector } from "@astryxdesign/core/Selector";
 import { Text } from "@astryxdesign/core/Text";
 
-import { AnswerApiError } from "../lib/api/answer";
+import { AnswerApiError } from "../../../lib/api/answer";
 import {
   getModelsConfig,
   putModelsConfig,
   type ModelsConfig,
-} from "../lib/api/config";
+} from "../../../lib/api/config";
 
 const ROLES: { key: string; label: string; description: string }[] = [
   {

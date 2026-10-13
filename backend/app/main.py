@@ -4,6 +4,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.api.router import api_router
+from app.api.service_token import assert_service_token_boot_policy, service_token_middleware
 from app.config import get_settings
 from app.domain.graph.checkpointer import close_checkpointer, open_checkpointer
 
@@ -19,6 +20,7 @@ async def lifespan(_app: FastAPI):
 
 def create_app() -> FastAPI:
     settings = get_settings()
+    assert_service_token_boot_policy(settings)
 
     app = FastAPI(
         title=settings.app_name,
@@ -34,6 +36,9 @@ def create_app() -> FastAPI:
         allow_methods=["*"],
         allow_headers=["*"],
     )
+    # Starlette: last added runs first. Token check should run before CORS
+    # response short-circuits on failures; add after CORS so CORS wraps it.
+    app.middleware("http")(service_token_middleware)
 
     app.include_router(api_router, prefix=settings.api_prefix)
 
