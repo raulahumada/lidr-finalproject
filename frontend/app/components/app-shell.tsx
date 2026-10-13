@@ -15,7 +15,15 @@ import {
 } from "@astryxdesign/core/SideNav";
 import { StatusDot } from "@astryxdesign/core/StatusDot";
 import { VStack } from "@astryxdesign/core/Layout";
-import { Box, Folder, Home, MessageSquare, Plus, Settings } from "lucide-react";
+import {
+  Box,
+  Folder,
+  Home,
+  MessageSquare,
+  Network,
+  Plus,
+  Settings,
+} from "lucide-react";
 
 import { useChatSessions } from "../lib/chat-sessions-context";
 import type { SessionSummary } from "../lib/api/sessions";
@@ -186,6 +194,12 @@ export function AppShellLayout({ children }: { children: React.ReactNode }) {
               icon={MessageSquare}
               href="/answer"
               isSelected={onChat}
+            />
+            <SideNavItem
+              label="Agentes"
+              icon={Network}
+              href="/agents"
+              isSelected={pathname.startsWith("/agents")}
             />
           </SideNavSection>
 

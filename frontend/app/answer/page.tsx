@@ -11,6 +11,7 @@ import {
 import { useSearchParams } from "next/navigation";
 
 import { Avatar } from "@astryxdesign/core/Avatar";
+import { Badge } from "@astryxdesign/core/Badge";
 import { Banner } from "@astryxdesign/core/Banner";
 import { Button } from "@astryxdesign/core/Button";
 import {
@@ -31,6 +32,7 @@ import { Grid } from "@astryxdesign/core/Grid";
 import { HStack, Layout, LayoutContent, VStack } from "@astryxdesign/core/Layout";
 import { List, ListItem } from "@astryxdesign/core/List";
 import { Markdown } from "@astryxdesign/core/Markdown";
+import { Selector } from "@astryxdesign/core/Selector";
 import { Text } from "@astryxdesign/core/Text";
 import { TextArea } from "@astryxdesign/core/TextArea";
 
@@ -40,6 +42,8 @@ import {
   runAgenticWithProgress,
   type AgenticAnswerResponse,
   type GraphActivityEntry,
+  type MetropolDomain,
+  type RoutingHistoryEntry,
 } from "../lib/api/agentic";
 import { readAnswerSession, type HistoryTurn } from "../lib/api/sessions";
 import { useChatSessions } from "../lib/chat-sessions-context";
@@ -50,13 +54,25 @@ const SUGGESTIONS = [
   "¿Cómo se gestiona el proceso de ventas?",
 ];
 
+const DOMAIN_OPTIONS = [
+  { value: "auto", label: "Auto (detectar)" },
+  { value: "ventas", label: "Ventas" },
+  { value: "cobranzas", label: "Cobranzas" },
+  { value: "operacion", label: "Operación" },
+  { value: "tenela", label: "Tenela" },
+  { value: "general", label: "General" },
+] as const;
+
 const PIPELINE_NODES = [
+  { node: "orchestrator", label: "Orquestador" },
   { node: "intent_framer", label: "Encuadre de intención" },
   { node: "corpus_fetcher", label: "Recuperación de evidencia" },
   { node: "grounded_composer", label: "Síntesis grounded" },
   { node: "source_guard", label: "Validación de citas" },
   { node: "escalation_gate", label: "Gate de revisión" },
 ] as const;
+
+type DomainChoice = "auto" | MetropolDomain;
 
 type UiState =
   | { status: "idle" }
@@ -156,10 +172,13 @@ function AnswerPageInner() {
   const [sessionBootError, setSessionBootError] = useState<string | null>(null);
 
   const [draft, setDraft] = useState("");
+  const [domainChoice, setDomainChoice] = useState<DomainChoice>("auto");
   const [adjustText, setAdjustText] = useState("");
   const [reviewNote, setReviewNote] = useState("");
   const [adjustError, setAdjustError] = useState<string | null>(null);
   const [activity, setActivity] = useState<GraphActivityEntry[]>([]);
+  const [liveDomain, setLiveDomain] = useState<string | null>(null);
+  const [liveRouting, setLiveRouting] = useState<RoutingHistoryEntry[]>([]);
   const [ui, setUi] = useState<UiState>({ status: "idle" });
   const [isPending, startTransition] = useTransition();
 
@@ -304,6 +323,8 @@ function AnswerPageInner() {
     setReviewNote("");
     setAdjustError(null);
     setActivity([]);
+    setLiveDomain(null);
+    setLiveRouting([]);
     setUi({ status: "loading", question });
 
     void (async () => {
@@ -317,12 +338,18 @@ function AnswerPageInner() {
 
         markBusy(sessionId, true);
         const data = await runAgenticWithProgress(
-          { question, session_id: sessionId },
+          {
+            question,
+            session_id: sessionId,
+            ...(domainChoice !== "auto" ? { domain: domainChoice } : {}),
+          },
           {
             signal: controller.signal,
             onProgress: (progress) => {
               if (activeSessionIdRef.current === sessionId) {
                 setActivity(progress.activity);
+                setLiveDomain(progress.domain);
+                setLiveRouting(progress.routing_history || []);
               } else {
                 const stash = stashRef.current[sessionId];
                 if (stash && stash.ui.status === "loading") {
@@ -454,6 +481,11 @@ function AnswerPageInner() {
     historyTurns.length > 0 || Boolean(activeQuestion) || ui.status === "error";
   const liveCalls = isCurrentBusy ? buildLiveCalls(activity) : [];
   const finishedCalls = resultData ? buildTraceCalls(resultData) : [];
+  const shownDomain = resultData?.domain ?? liveDomain;
+  const shownRouting =
+    resultData?.routing_history?.length
+      ? resultData.routing_history
+      : liveRouting;
 
   return (
     <Layout
@@ -598,6 +630,23 @@ function AnswerPageInner() {
                   </VStack>
                 ) : null}
 
+                <HStack gap={3} wrap="wrap" align="end">
+                  <Selector
+                    label="Dominio"
+                    options={[...DOMAIN_OPTIONS]}
+                    value={domainChoice}
+                    onChange={(value) =>
+                      setDomainChoice((value as DomainChoice) || "auto")
+                    }
+                    size="sm"
+                    width={200}
+                    isDisabled={
+                      isCurrentBusy || reviewData != null || !activeSessionId
+                    }
+                    description="Auto detecta; override fuerza el tag Metropol."
+                  />
+                </HStack>
+
                 <ChatComposer
                   value={draft}
                   onChange={setDraft}
@@ -689,11 +738,39 @@ function AnswerPageInner() {
                         sender="assistant"
                         avatar={<Avatar name="Metropol" size="md" />}
                       >
+                        {shownDomain ? (
+                          <HStack gap={2} wrap="wrap">
+                            <Badge variant="teal" label={shownDomain} />
+                          </HStack>
+                        ) : null}
                         <ChatToolCalls
                           defaultIsExpanded
                           label="Flujo en vivo"
                           calls={liveCalls}
                         />
+                        {shownRouting.length > 0 ? (
+                          <ChatMessageBubble variant="ghost" width="100%">
+                            <List
+                              header={
+                                <Heading level={3}>Ruteo</Heading>
+                              }
+                              hasDividers
+                              density="compact"
+                            >
+                              {shownRouting.map((step) => (
+                                <ListItem
+                                  key={`route-${step.step}-${step.next_agent}`}
+                                  label={`→ ${step.next_agent}`}
+                                  description={
+                                    step.reason
+                                      ? `${step.reason}${step.source ? ` (${step.source})` : ""}`
+                                      : step.source || undefined
+                                  }
+                                />
+                              ))}
+                            </List>
+                          </ChatMessageBubble>
+                        ) : null}
                         <ChatMessageBubble variant="ghost">
                           <Text type="body" color="secondary">
                             Corriendo pipeline agentic…
@@ -707,12 +784,40 @@ function AnswerPageInner() {
                         sender="assistant"
                         avatar={<Avatar name="Metropol" size="md" />}
                       >
+                        {shownDomain ? (
+                          <HStack gap={2} wrap="wrap">
+                            <Badge variant="teal" label={shownDomain} />
+                          </HStack>
+                        ) : null}
                         {finishedCalls.length > 0 ? (
                           <ChatToolCalls
                             defaultIsExpanded={ui.status === "awaiting_review"}
                             label="Pasos del agente"
                             calls={finishedCalls}
                           />
+                        ) : null}
+                        {shownRouting.length > 0 ? (
+                          <ChatMessageBubble variant="ghost" width="100%">
+                            <List
+                              header={
+                                <Heading level={3}>Ruteo</Heading>
+                              }
+                              hasDividers
+                              density="compact"
+                            >
+                              {shownRouting.map((step) => (
+                                <ListItem
+                                  key={`done-route-${step.step}-${step.next_agent}`}
+                                  label={`→ ${step.next_agent}`}
+                                  description={
+                                    step.reason
+                                      ? `${step.reason}${step.source ? ` (${step.source})` : ""}`
+                                      : step.source || undefined
+                                  }
+                                />
+                              ))}
+                            </List>
+                          </ChatMessageBubble>
                         ) : null}
 
                         {resultData.answer ? (
