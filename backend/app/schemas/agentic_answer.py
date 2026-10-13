@@ -86,6 +86,7 @@ class AgenticProgressResponse(BaseModel):
     thread_id: str
     activity: list[GraphActivityEntry] = Field(default_factory=list)
     question: str | None = None
+    resolved_question: str | None = None
     domain: str | None = None
     answer: str | None = None
     citations: list[Citation] = Field(default_factory=list)

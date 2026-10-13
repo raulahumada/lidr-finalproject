@@ -218,12 +218,20 @@ Prerrequisitos: Postgres + Redis up, `OPENAI_API_KEY`, corpus ingerido, API en `
 
 ```bash
 cd backend && source .venv/bin/activate
-# smoke un caso:
+# smoke un caso (1 turno):
 python -m eval.run_eval --base-url http://localhost:8000 --limit 1
 # caso concreto + auto-approve si pausa el gate humano:
 python -m eval.run_eval --case cobranzas-handoff-tenela --auto-approve
 # set completo → report en eval/reports/report-*.json (gitignored)
 python -m eval.run_eval
+```
+
+Multiturn (misma sesión, mide rewrite / falso negativo del resolver):
+
+```bash
+python -m eval.run_multiturn --limit 1 --auto-approve
+python -m eval.run_multiturn --case cobranzas-followup-tenela --auto-approve
+# report: eval/reports/report-multiturn-*.json
 ```
 
 Scorer offline: `pytest -q tests/test_eval_scoring.py`.
