@@ -77,6 +77,17 @@ SideNav → **Agentes**. Studio master-detail (grafo + panel):
 
 Smoke: abrir `/agents`, click orquestador vs composer (ver diferencia de prompt), crear `risk_advisor`, verlo como nodo, editar, deshabilitar, borrar.
 
+### Search console (`/search`)
+
+SideNav → **Búsqueda**. Consola de retrieve semántico sobre `POST /api/v1/search` (sin generar respuesta):
+
+- Formulario: consulta + `k` (default 5) → lista de hits (score, path, excerpt).
+- Estados: loading, vacío (0 hits), error (incl. 503 sin `OPENAI_API_KEY`).
+- Deep link: `/search?q=handoff+cobranzas` prefilla y dispara la búsqueda al cargar.
+- Cliente: `lib/api/search.ts`.
+
+Smoke: backend up + corpus ingerido → `/search` → “handoff cobranzas” → ver hits con score/path; probar `?q=tenela`; apagar API key → 503 visible en banner.
+
 ### Checkpointer / activity caveat
 
 Backend **pause/resume** uses a durable Postgres checkpointer by default (`DATABASE_URL`); a paused `thread_id` can still be resumed after an API restart. The **activity/progress log** is still **in-process** — after reload, `/progress` may **404** even though `resume` with a known `thread_id` still works. El **historial de sesión** sí sobrevive F5.
