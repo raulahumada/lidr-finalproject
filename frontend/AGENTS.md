@@ -57,6 +57,6 @@ Primary path is **agentic live progress** (Astryx `ai-chat` frame: suggestions, 
 - While `status=running`, the chat shows `ChatToolCalls` for Metropol nodes (pending/running/complete).
 - Terminal `awaiting_human_review` is a pause, not an error. Resume is a direct POST (no poll).
 
-### MemorySaver / activity caveat
+### Checkpointer / activity caveat
 
-Backend checkpointer and activity log are **in-process**. If Uvicorn reloads, paused `thread_id`s and progress buffers are lost → progress/resume **404**. Re-submit the question.
+Backend **pause/resume** uses a durable Postgres checkpointer by default (`DATABASE_URL`); a paused `thread_id` can still be resumed after an API restart. The **activity/progress log** is still **in-process** — after reload, `/progress` may **404** even though `resume` with a known `thread_id` still works.

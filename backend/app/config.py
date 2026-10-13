@@ -36,6 +36,9 @@ class Settings(BaseSettings):
     knowledge_pack_max_tokens: int = 2048
     # Agentic answer: escalate when confidence is below this (0–1).
     agentic_confidence_threshold: float = 0.55
+    # Agentic checkpointer: auto | postgres | memory.
+    # auto → Postgres when DATABASE_URL is set, else MemorySaver.
+    agentic_checkpointer: str = "auto"
 
     @property
     def cors_origins_list(self) -> list[str]:
