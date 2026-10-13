@@ -5,6 +5,7 @@ from __future__ import annotations
 from typing import Any
 
 from app.domain.graph.state import AgenticAnswerState
+from app.domain.grounding import is_thin_grounding
 
 
 def source_guard(state: AgenticAnswerState) -> dict[str, Any]:
@@ -25,6 +26,11 @@ def source_guard(state: AgenticAnswerState) -> dict[str, Any]:
             dropped += 1
 
     no_evidence = bool(state.get("no_evidence")) or not hits
+    thin = is_thin_grounding(
+        answer=str(state.get("answer") or ""),
+        citation_count=len(kept),
+        no_evidence=no_evidence,
+    )
     if no_evidence:
         citations_valid = True  # empty citations on no-evidence is valid
         confidence = 0.0
@@ -38,6 +44,13 @@ def source_guard(state: AgenticAnswerState) -> dict[str, Any]:
         citations_valid = True
         confidence = max(float(state.get("confidence") or 0.6), 0.65 if kept else 0.55)
 
+    if thin:
+        confidence = min(confidence, 0.45)
+
+    summary = f"citations_valid={citations_valid}; kept={len(kept)}; dropped={dropped}"
+    if thin:
+        summary += "; thin grounding (long answer, few citations)"
+
     return {
         "citations": kept,
         "citations_valid": citations_valid,
@@ -45,9 +58,7 @@ def source_guard(state: AgenticAnswerState) -> dict[str, Any]:
         "agent_trace": [
             {
                 "node": "source_guard",
-                "summary": (
-                    f"citations_valid={citations_valid}; kept={len(kept)}; dropped={dropped}"
-                ),
+                "summary": summary,
             }
         ],
     }

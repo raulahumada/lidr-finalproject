@@ -133,7 +133,7 @@ Compose debe incluir **Redis Stack** (`redis` en `docker-compose.yml`) además d
 
 Flujo: caché exacta → caché semántica (`SEMANTIC_CACHE_LOG_ONLY=true` por defecto) → retrieve → presupuesto de contexto → pack Metropol + Jinja (`ANSWER_PROMPT_VERSION=v2` por defecto) → LLM → citas validadas.
 
-Al cambiar prompts o `ANSWER_PROMPT_VERSION`, las claves de caché exacta cambian con la versión; si iterás el mismo `v2` y ves respuestas viejas: `docker compose exec redis redis-cli FLUSHDB`.
+Al cambiar prompts o `ANSWER_PROMPT_VERSION`, las claves de caché exacta cambian con la versión; si iterás el mismo `v2` (p. ej. reglas de grounding / abstención en `system.j2`) y ves respuestas viejas: `docker compose exec redis redis-cli FLUSHDB`. Preferir iterar `v2` + flush antes de crear `v3`.
 
 ```bash
 docker compose up -d redis
