@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+import threading
 import uuid
 from typing import Any
 
@@ -10,6 +11,7 @@ from langgraph.types import Command
 
 from app.config import Settings, get_settings
 from app.domain.answer_service import build_knowledge_pack
+from app.domain.graph.activity import GraphActivityLog, describe_node
 from app.domain.graph.build import build_agentic_answer_graph
 from app.domain.graph.checkpointer import get_checkpointer
 from app.domain.graph.state import AgenticAnswerState
@@ -25,6 +27,9 @@ log = logging.getLogger(__name__)
 
 THREAD_PREFIX = "agentic-answer"
 
+# Strong refs so background runs are not GC'd mid-flight (peer Task set pattern).
+_BACKGROUND_THREADS: set[threading.Thread] = set()
+
 
 class AgenticAnswerRunner:
     def __init__(
@@ -33,10 +38,12 @@ class AgenticAnswerRunner:
         retriever: SemanticRetriever,
         chat: ChatClient,
         settings: Settings | None = None,
+        activity_log: GraphActivityLog | None = None,
     ) -> None:
         self.retriever = retriever
         self.chat = chat
         self.settings = settings or get_settings()
+        self.activity_log = activity_log or GraphActivityLog()
         self._graph = build_agentic_answer_graph(checkpointer=get_checkpointer())
 
     def _config(self, thread_id: str) -> dict[str, Any]:
@@ -66,6 +73,113 @@ class AgenticAnswerRunner:
         }
         result = self._graph.invoke(initial, self._config(thread_id))
         return self._to_response(thread_id, result, resolved_k=resolved_k)
+
+    def start_background_run(self, *, question: str, k: int | None = None) -> str:
+        """Schedule a streamed graph run; return thread_id immediately."""
+        thread_id = uuid.uuid4().hex
+        resolved_k = k if k is not None else self.settings.answer_default_k
+        self.activity_log.start(thread_id, question=question)
+
+        def _run() -> None:
+            try:
+                self._run_background(
+                    thread_id=thread_id,
+                    question=question,
+                    resolved_k=resolved_k,
+                )
+            finally:
+                _BACKGROUND_THREADS.discard(worker)
+
+        worker = threading.Thread(
+            target=_run,
+            name=f"agentic-bg-{thread_id[:8]}",
+            daemon=True,
+        )
+        _BACKGROUND_THREADS.add(worker)
+        worker.start()
+        return thread_id
+
+    def _run_background(
+        self,
+        *,
+        thread_id: str,
+        question: str,
+        resolved_k: int,
+    ) -> None:
+        cfg = self._config(thread_id)
+        initial: AgenticAnswerState = {
+            "question": question,
+            "k": resolved_k,
+            "agent_trace": [],
+            "review_reasons": [],
+            "prompt_version": self.settings.answer_prompt_version,
+        }
+        try:
+            for update in self._graph.stream(initial, cfg, stream_mode="updates"):
+                if not isinstance(update, dict):
+                    continue
+                for node_name, node_update in update.items():
+                    for entry in describe_node(node_name, node_update):
+                        self.activity_log.append(
+                            thread_id,
+                            entry["node"],
+                            entry["label"],
+                            entry["message"],
+                        )
+
+            snapshot = self._graph.get_state(cfg)
+            values = dict(snapshot.values or {})
+            interrupts = list(getattr(snapshot, "interrupts", None) or ())
+            if not interrupts and snapshot.tasks:
+                for task in snapshot.tasks:
+                    interrupts.extend(getattr(task, "interrupts", None) or ())
+
+            if interrupts:
+                payload = (
+                    interrupts[0].value
+                    if hasattr(interrupts[0], "value")
+                    else interrupts[0]
+                )
+                reasons = list(
+                    (payload or {}).get("reasons")
+                    or values.get("review_reasons")
+                    or []
+                )
+                for entry in describe_node("__interrupt__", interrupts):
+                    self.activity_log.append(
+                        thread_id,
+                        entry["node"],
+                        entry["label"],
+                        entry["message"],
+                    )
+                result = self._to_response(
+                    thread_id,
+                    {**values, "__interrupt__": interrupts},
+                    resolved_k=resolved_k,
+                )
+                self.activity_log.finish(
+                    thread_id,
+                    "awaiting_human_review",
+                    result=result.model_dump(),
+                )
+                return
+
+            result = self._to_response(thread_id, values, resolved_k=resolved_k)
+            status = result.status
+            if status not in {"completed", "rejected", "awaiting_human_review"}:
+                status = "completed"
+            self.activity_log.finish(
+                thread_id,
+                status,  # type: ignore[arg-type]
+                result=result.model_dump(),
+            )
+        except Exception as exc:  # noqa: BLE001
+            log.exception("agentic_background_failed thread_id=%s", thread_id)
+            self.activity_log.finish(
+                thread_id,
+                "failed",
+                error=str(exc)[:300],
+            )
 
     def resume(
         self,

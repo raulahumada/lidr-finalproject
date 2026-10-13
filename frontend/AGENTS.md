@@ -40,4 +40,23 @@ RULES:
 
 ## API base URL
 
-Sync answer chat (`/answer`) calls FastAPI at `NEXT_PUBLIC_API_BASE_URL` (default `http://localhost:8000`). Copy `.env.example` → `.env.local` if you need a different origin. Backend CORS already allows `http://localhost:3000`.
+Chat UI (`/answer`) calls FastAPI at `NEXT_PUBLIC_API_BASE_URL` (default `http://localhost:8000`). Copy `.env.example` → `.env.local` if you need a different origin. Backend CORS already allows `http://localhost:3000`.
+
+## Agentic answer chat (`/answer`)
+
+Primary path is **agentic live progress** (Astryx `ai-chat` frame: suggestions, live agent steps, Markdown answer, evidence, human gate):
+
+| Action | Endpoint |
+|--------|----------|
+| Start | `POST {API}/api/v1/answer/agentic/start` → 202 + `thread_id` |
+| Progress poll (~1.2s) | `GET {API}/api/v1/answer/agentic/{thread_id}/progress` |
+| Resume (approve / reject / adjust) | `POST {API}/api/v1/answer/agentic/{thread_id}/resume` |
+
+- The UI does **not** ask for `k`; the backend default applies.
+- Hot path: `runAgenticWithProgress` in `lib/api/agentic.ts` (start + poll). Sync `postAgenticAnswer` remains for curl/tests.
+- While `status=running`, the chat shows `ChatToolCalls` for Metropol nodes (pending/running/complete).
+- Terminal `awaiting_human_review` is a pause, not an error. Resume is a direct POST (no poll).
+
+### MemorySaver / activity caveat
+
+Backend checkpointer and activity log are **in-process**. If Uvicorn reloads, paused `thread_id`s and progress buffers are lost → progress/resume **404**. Re-submit the question.

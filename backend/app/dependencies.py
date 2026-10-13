@@ -11,6 +11,7 @@ from openai import OpenAI
 
 from app.config import Settings, get_settings
 from app.domain.answer_service import AnswerService, build_knowledge_pack
+from app.domain.graph.activity import GraphActivityLog
 from app.domain.graph.runner import AgenticAnswerRunner
 from app.foundation.llm.chat import ChatClient
 from app.foundation.persistence.database import get_session_factory
@@ -97,6 +98,11 @@ def get_answer_service() -> Optional[AnswerService]:
     )
 
 
+@lru_cache
+def get_activity_log() -> GraphActivityLog:
+    return GraphActivityLog()
+
+
 def get_agentic_answer_runner() -> Optional[AgenticAnswerRunner]:
     settings = get_settings()
     if not settings.embeddings_configured:
@@ -109,4 +115,9 @@ def get_agentic_answer_runner() -> Optional[AgenticAnswerRunner]:
         store=get_chunk_store(),
     )
     chat = ChatClient(client, model=settings.chat_model)
-    return AgenticAnswerRunner(retriever=retriever, chat=chat, settings=settings)
+    return AgenticAnswerRunner(
+        retriever=retriever,
+        chat=chat,
+        settings=settings,
+        activity_log=get_activity_log(),
+    )

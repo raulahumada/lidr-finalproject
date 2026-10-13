@@ -150,6 +150,8 @@ Pipeline fijo Metropol: `intent_framer` → `corpus_fetcher` → `grounded_compo
 
 Si confianza < `AGENTIC_CONFIDENCE_THRESHOLD` (default `0.55`), sin evidencia, o citas inválidas → **202** + `thread_id`; luego resume.
 
+**Live progress (consola):** `POST /answer/agentic/start` agenda en background (HTTP 202 + `thread_id`) y `GET /answer/agentic/{thread_id}/progress` narra nodos mientras `running`. El activity log es **in-process** (mismo caveat que MemorySaver: se pierde al reload).
+
 ```bash
 cd backend && source .venv/bin/activate
 # OPENAI_API_KEY en backend/.env
@@ -157,7 +159,13 @@ curl -s -w '\nHTTP %{http_code}\n' http://localhost:8000/api/v1/answer/agentic \
   -H 'Content-Type: application/json' \
   -d '{"question":"¿Cómo es el handoff de cobranzas con Tenela?","k":5}' | python3 -m json.tool
 
-# Si status=awaiting_human_review (HTTP 202), retomá con el thread_id:
+# Live progress (start + poll):
+THREAD=$(curl -s -X POST http://localhost:8000/api/v1/answer/agentic/start \
+  -H 'Content-Type: application/json' \
+  -d '{"question":"¿Cómo es el handoff de cobranzas con Tenela?"}' | python3 -c 'import sys,json; print(json.load(sys.stdin)["thread_id"])')
+curl -s "http://localhost:8000/api/v1/answer/agentic/${THREAD}/progress" | python3 -m json.tool
+
+# Si status=awaiting_human_review (HTTP 202 sync, o progress terminal), retomá con el thread_id:
 curl -s http://localhost:8000/api/v1/answer/agentic/<thread_id>/resume \
   -H 'Content-Type: application/json' \
   -d '{"decision":"approve"}' | python3 -m json.tool
@@ -192,11 +200,9 @@ Scripts: `dev`, `build`, `start`, `lint`.
 ## Estado actual / gaps
 
 - Sin package/workspace root; cada carpeta se instala y corre por separado.
-- RAG: Alembic + `POST /api/v1/search` + ingest + `POST /answer` + `POST /answer/agentic` (MemorySaver; follow-up: orchestrator + Postgres checkpointer).
+- RAG: Alembic + `POST /api/v1/search` + ingest + `POST /answer` + `POST /answer/agentic` (+ `/start` + `/progress`; MemorySaver + activity log in-process; follow-up: orchestrator + Postgres checkpointer).
 - Items CRUD sigue en memoria.
-- Sin cliente HTTP ni tipos compartidos entre front y back.
-- Astryx en `package.json` pero no cableado en `layout.tsx` / `globals.css`.
-- Metadata del front aún dice "Create Next App".
+- Front chat agentic en `/answer` (Astryx); sin package de tipos compartidos monorepo.
 
 ## Convenciones para agentes
 
