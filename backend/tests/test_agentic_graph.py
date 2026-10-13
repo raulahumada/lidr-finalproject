@@ -28,7 +28,7 @@ class FakeChat:
         self.calls = 0
         self.citation_indices = citation_indices if citation_indices is not None else [0]
 
-    def complete_json(self, *, system: str, user: str) -> dict[str, Any]:
+    def complete_json(self, *, system: str, user: str, role: str = "chat") -> dict[str, Any]:
         self.calls += 1
         return {"answer": "Respuesta agentic grounded.", "citation_indices": self.citation_indices}
 

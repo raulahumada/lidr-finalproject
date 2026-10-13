@@ -70,7 +70,7 @@ def prompt_specialist(state: AgenticAnswerState, config: RunnableConfig) -> dict
         'Respondé en JSON: {"note": "tu aporte breve para el compositor"}'
     )
     try:
-        raw = chat.complete_json(system=system, user=user)
+        raw = chat.complete_json(system=system, user=user, role="prompt_specialist")
         note = str(raw.get("note") or "").strip() or str(raw)
     except Exception as exc:  # noqa: BLE001
         log.warning("prompt_specialist_failed key=%s err=%s", key, exc)

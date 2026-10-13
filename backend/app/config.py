@@ -22,6 +22,8 @@ class Settings(BaseSettings):
     openai_api_key: str = ""
     embedding_model: str = "text-embedding-3-small"
     chat_model: str = "gpt-4o-mini"
+    # Allowlist for runtime chat-model overrides (GET/PUT /config/models).
+    available_chat_models: str = "gpt-4o-mini,gpt-4o"
     # Local Metropol corpus (absolute path). Empty → ingest CLI refuses to run.
     corpus_root: str = ""
     corpus_extensions: str = "pdf,docx,txt,md"
@@ -59,6 +61,14 @@ class Settings(BaseSettings):
             ext.strip().lstrip(".").lower()
             for ext in self.corpus_extensions.split(",")
             if ext.strip()
+        ]
+
+    @property
+    def available_chat_models_list(self) -> list[str]:
+        return [
+            model.strip()
+            for model in self.available_chat_models.split(",")
+            if model.strip()
         ]
 
 

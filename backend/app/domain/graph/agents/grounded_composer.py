@@ -101,7 +101,7 @@ def grounded_composer(state: AgenticAnswerState, config: RunnableConfig) -> dict
         )
 
     chat = cfg["chat"]
-    raw = chat.complete_json(system=system, user=user)
+    raw = chat.complete_json(system=system, user=user, role="composer")
     answer_text = str(raw.get("answer") or "").strip() or NO_EVIDENCE_ANSWER
     citations = [
         c.model_dump() for c in AnswerService._citations_from_model(blocks, raw)

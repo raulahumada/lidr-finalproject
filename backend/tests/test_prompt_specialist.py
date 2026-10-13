@@ -4,7 +4,7 @@ from app.domain.graph.agents.prompt_specialist import prompt_specialist
 
 
 class _StubChat:
-    def complete_json(self, *, system: str, user: str) -> dict:
+    def complete_json(self, *, system: str, user: str, role: str = "chat") -> dict:
         assert "asesor" in system.lower() or system
         return {"note": "revisá mora y promesas"}
 

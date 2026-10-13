@@ -23,7 +23,7 @@ class FakeChat:
     def __init__(self) -> None:
         self.calls = 0
 
-    def complete_json(self, *, system: str, user: str) -> dict[str, Any]:
+    def complete_json(self, *, system: str, user: str, role: str = "chat") -> dict[str, Any]:
         self.calls += 1
         assert "Metropol" in system or "pack" in system.lower() or "conocimiento" in system
         return {"answer": "Respuesta grounded.", "citation_indices": [0]}
