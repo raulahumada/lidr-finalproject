@@ -155,7 +155,7 @@ curl -s http://localhost:8000/api/v1/answer \
 | Orquestador | Hub que rutea entre esos nodos (`routing_history`, tope `AGENTIC_ORCHESTRATOR_MAX_STEPS`, default `10`) |
 | Domain tag | Etiqueta Metropol `ventas\|cobranzas\|operacion\|tenela\|general` (auto-detect o override en el request); **no** es un agente aparte |
 
-**Catálogo (consola):** `GET /api/v1/answer/agents` → roles + ladder + domains + knobs (`agentic_orchestrator_max_steps`, `agentic_confidence_threshold`). UI: `/agents`.
+**Catálogo / studio (consola):** `GET /api/v1/answer/agents` → builtins (read-only; prompt Jinja del composer) + customs (Postgres) + ladder + knobs. CRUD de **customs** solo: `POST/PATCH/DELETE /api/v1/answer/agents` (builtins → 405/409). Prompt builtin = `foundation/prompts/answer/{ANSWER_PROMPT_VERSION}/system.j2`; prompt custom = columna DB. Customs enabled entran al ladder vía nodo `prompt_specialist` (después de `corpus_fetcher`). UI: `/agents`. Alembic: `agent_profiles`.
 
 **Checkpointer:** por defecto **Postgres** (`AGENTIC_CHECKPOINTER=auto` + `DATABASE_URL`) — pause/resume sobrevive reinicios de Uvicorn (tablas LangGraph vía `setup()` al boot; no Alembic). `AGENTIC_CHECKPOINTER=memory` fuerza `MemorySaver` in-process (tests / offline).
 

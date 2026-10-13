@@ -21,6 +21,7 @@ _LABELS: dict[str, str] = {
     "orchestrator": "Orquestador",
     "intent_framer": "Encuadre de intención",
     "corpus_fetcher": "Recuperación de evidencia",
+    "prompt_specialist": "Agente custom",
     "grounded_composer": "Síntesis grounded",
     "source_guard": "Validación de citas",
     "escalation_gate": "Gate de revisión",
