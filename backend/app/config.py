@@ -39,6 +39,9 @@ class Settings(BaseSettings):
     # Agentic checkpointer: auto | postgres | memory.
     # auto → Postgres when DATABASE_URL is set, else MemorySaver.
     agentic_checkpointer: str = "auto"
+    # Conversation memory (agentic + session_id): sliding window + prompt budget.
+    conversation_max_turns: int = 4
+    conversation_memory_max_tokens: int = 1024
 
     @property
     def cors_origins_list(self) -> list[str]:

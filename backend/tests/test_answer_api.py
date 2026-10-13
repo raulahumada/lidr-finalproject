@@ -14,3 +14,21 @@ def test_answer_503_without_openai_key(monkeypatch) -> None:
     client = TestClient(create_app())
     response = client.post("/api/v1/answer", json={"question": "hola"})
     assert response.status_code == 503
+
+
+def test_answer_rejects_session_id(monkeypatch) -> None:
+    monkeypatch.setenv("OPENAI_API_KEY", "sk-test")
+    from app.config import get_settings
+    from app import dependencies
+
+    get_settings.cache_clear()
+    dependencies.get_chunk_store.cache_clear()
+
+    client = TestClient(create_app())
+    response = client.post(
+        "/api/v1/answer",
+        json={"question": "hola", "session_id": "abc123"},
+    )
+    assert response.status_code == 422
+    detail = str(response.json().get("detail") or "").lower()
+    assert "session_id" in detail or "agentic" in detail

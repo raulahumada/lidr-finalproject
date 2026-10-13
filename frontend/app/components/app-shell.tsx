@@ -136,6 +136,12 @@ function ChatSessionsNav() {
 export function AppShellLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const onChat = pathname.startsWith("/answer");
+  // autoSaveId reads localStorage on the client; enable only after mount
+  // so SSR and the first client paint share defaultWidth (no hydration mismatch).
+  const [sideNavPersistReady, setSideNavPersistReady] = useState(false);
+  useEffect(() => {
+    setSideNavPersistReady(true);
+  }, []);
 
   return (
     <AppShell
@@ -150,7 +156,9 @@ export function AppShellLayout({ children }: { children: React.ReactNode }) {
             defaultWidth: 280,
             minWidth: 220,
             maxWidth: 400,
-            autoSaveId: "entrega-lidr-sidenav",
+            ...(sideNavPersistReady
+              ? { autoSaveId: "entrega-lidr-sidenav" }
+              : {}),
           }}
           header={
             <SideNavHeading

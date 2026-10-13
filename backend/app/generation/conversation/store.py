@@ -109,6 +109,7 @@ class SessionStore:
         citations: list[dict[str, Any]] | None,
         status: str,
         thread_id: str | None = None,
+        resolved_question: str | None = None,
     ) -> dict[str, Any]:
         if status not in {"completed", "rejected"}:
             raise ValueError(f"Cannot append non-terminal status: {status}")
@@ -126,7 +127,7 @@ class SessionStore:
                 }
             )
 
-        turn = {
+        turn: dict[str, Any] = {
             "question": question,
             "answer": answer,
             "citations": citation_snapshots,
@@ -134,6 +135,11 @@ class SessionStore:
             "thread_id": thread_id,
             "created_at": _utcnow().isoformat(),
         }
+        cleaned_resolved = (
+            resolved_question.strip() if isinstance(resolved_question, str) else None
+        )
+        if cleaned_resolved and cleaned_resolved != question.strip():
+            turn["resolved_question"] = cleaned_resolved
 
         with self._session_factory() as db:
             row = db.get(ConversationSessionRow, session_id)

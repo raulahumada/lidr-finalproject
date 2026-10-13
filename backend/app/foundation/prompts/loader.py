@@ -26,16 +26,19 @@ def render_answer_prompts(
     question: str,
     retrieved_chunks: list[dict[str, Any]] | None = None,
     context: str = "",
+    memory_block: str = "",
 ) -> tuple[str, str]:
     """Return (system_prompt, user_prompt) for the answer use case.
 
     v1 templates use ``retrieved_chunks``; v2+ use preformatted ``context``.
+    ``memory_block`` is optional conversation context (never citable evidence).
     """
     values = {
         "knowledge_pack": knowledge_pack,
         "question": question,
         "retrieved_chunks": retrieved_chunks or [],
         "context": context,
+        "memory_block": memory_block or "",
     }
     system = _env.get_template(f"answer/{version}/system.j2").render(**values)
     user = _env.get_template(f"answer/{version}/user.j2").render(**values)
