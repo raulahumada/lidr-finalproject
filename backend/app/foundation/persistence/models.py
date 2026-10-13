@@ -63,3 +63,25 @@ class ChunkRow(Base):
     )
 
     document: Mapped["DocumentRow"] = relationship(back_populates="chunks")
+
+
+class ConversationSessionRow(Base):
+    """Durable chat session + JSON transcript (not a LangGraph thread)."""
+
+    __tablename__ = "conversation_sessions"
+    __table_args__ = (Index("ix_conversation_sessions_updated_at", "updated_at"),)
+
+    id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    title: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    history: Mapped[List] = mapped_column(
+        JSONB, nullable=False, server_default=text("'[]'::jsonb")
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now()
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        nullable=False,
+        server_default=func.now(),
+        onupdate=func.now(),
+    )

@@ -16,6 +16,7 @@ from app.domain.graph.runner import AgenticAnswerRunner
 from app.foundation.llm.chat import ChatClient
 from app.foundation.persistence.database import get_session_factory
 from app.foundation.persistence.repository import ChunkStore
+from app.generation.conversation.store import SessionStore
 from app.generation.cag.exact import ExactAnswerCache
 from app.generation.cag.semantic import SemanticAnswerCache
 from app.generation.rag.embedder import OpenAIEmbedder
@@ -103,6 +104,11 @@ def get_activity_log() -> GraphActivityLog:
     return GraphActivityLog()
 
 
+@lru_cache
+def get_session_store() -> SessionStore:
+    return SessionStore(get_session_factory())
+
+
 def get_agentic_answer_runner() -> Optional[AgenticAnswerRunner]:
     settings = get_settings()
     if not settings.embeddings_configured:
@@ -120,4 +126,5 @@ def get_agentic_answer_runner() -> Optional[AgenticAnswerRunner]:
         chat=chat,
         settings=settings,
         activity_log=get_activity_log(),
+        session_store=get_session_store(),
     )

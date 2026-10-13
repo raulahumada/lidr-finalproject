@@ -8,6 +8,7 @@ from app.schemas.answer import Citation
 class AgenticAnswerRequest(BaseModel):
     question: str = Field(..., min_length=1, max_length=4000)
     k: int | None = Field(default=None, ge=1, le=50)
+    session_id: str | None = Field(default=None, min_length=1, max_length=64)
 
 
 class AgenticResumeRequest(BaseModel):

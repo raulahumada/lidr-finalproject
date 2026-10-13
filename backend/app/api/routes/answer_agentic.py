@@ -6,9 +6,10 @@ from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Response, status
 
-from app.dependencies import get_activity_log, get_agentic_answer_runner
+from app.dependencies import get_activity_log, get_agentic_answer_runner, get_session_store
 from app.domain.graph.activity import GraphActivityLog
 from app.domain.graph.runner import AgenticAnswerRunner
+from app.generation.conversation.store import SessionStore
 from app.schemas.agentic_answer import (
     AgenticAnswerRequest,
     AgenticAnswerResponse,
@@ -22,6 +23,16 @@ from app.schemas.answer import Citation
 router = APIRouter(tags=["answer-agentic"])
 
 
+def _require_session(store: SessionStore, session_id: str | None) -> None:
+    if not session_id:
+        return
+    if store.get(session_id) is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Unknown or deleted session_id.",
+        )
+
+
 @router.post(
     "/answer/agentic",
     response_model=AgenticAnswerResponse,
@@ -31,14 +42,20 @@ def answer_agentic(
     request: AgenticAnswerRequest,
     response: Response,
     runner: Optional[AgenticAnswerRunner] = Depends(get_agentic_answer_runner),
+    store: SessionStore = Depends(get_session_store),
 ) -> AgenticAnswerResponse:
     if runner is None:
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail="Agentic answer is not available (missing OPENAI_API_KEY).",
         )
+    _require_session(store, request.session_id)
     try:
-        result = runner.start(question=request.question, k=request.k)
+        result = runner.start(
+            question=request.question,
+            k=request.k,
+            session_id=request.session_id,
+        )
     except Exception as exc:  # noqa: BLE001
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -57,16 +74,19 @@ def answer_agentic(
 def answer_agentic_start(
     request: AgenticAnswerRequest,
     runner: Optional[AgenticAnswerRunner] = Depends(get_agentic_answer_runner),
+    store: SessionStore = Depends(get_session_store),
 ) -> AgenticStartResponse:
     if runner is None:
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail="Agentic answer is not available (missing OPENAI_API_KEY).",
         )
+    _require_session(store, request.session_id)
     try:
         thread_id = runner.start_background_run(
             question=request.question,
             k=request.k,
+            session_id=request.session_id,
         )
     except Exception as exc:  # noqa: BLE001
         raise HTTPException(

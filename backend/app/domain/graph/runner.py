@@ -16,6 +16,7 @@ from app.domain.graph.build import build_agentic_answer_graph
 from app.domain.graph.checkpointer import get_checkpointer
 from app.domain.graph.state import AgenticAnswerState
 from app.foundation.llm.chat import ChatClient
+from app.generation.conversation.store import SessionNotFoundError, SessionStore
 from app.generation.rag.retriever import SemanticRetriever
 from app.schemas.agentic_answer import (
     AgenticAnswerResponse,
@@ -39,11 +40,13 @@ class AgenticAnswerRunner:
         chat: ChatClient,
         settings: Settings | None = None,
         activity_log: GraphActivityLog | None = None,
+        session_store: SessionStore | None = None,
     ) -> None:
         self.retriever = retriever
         self.chat = chat
         self.settings = settings or get_settings()
         self.activity_log = activity_log or GraphActivityLog()
+        self.session_store = session_store
         self._graph = build_agentic_answer_graph(checkpointer=get_checkpointer())
 
     def _config(self, thread_id: str) -> dict[str, Any]:
@@ -60,21 +63,86 @@ class AgenticAnswerRunner:
             }
         }
 
-    def start(self, *, question: str, k: int | None = None) -> AgenticAnswerResponse:
-        thread_id = uuid.uuid4().hex
-        settings = self.settings
-        resolved_k = k if k is not None else settings.answer_default_k
+    def _initial_state(
+        self,
+        *,
+        question: str,
+        resolved_k: int,
+        session_id: str | None,
+    ) -> AgenticAnswerState:
         initial: AgenticAnswerState = {
             "question": question,
             "k": resolved_k,
             "agent_trace": [],
             "review_reasons": [],
-            "prompt_version": settings.answer_prompt_version,
+            "prompt_version": self.settings.answer_prompt_version,
         }
-        result = self._graph.invoke(initial, self._config(thread_id))
-        return self._to_response(thread_id, result, resolved_k=resolved_k)
+        if session_id:
+            initial["session_id"] = session_id
+        return initial
 
-    def start_background_run(self, *, question: str, k: int | None = None) -> str:
+    def _maybe_append_history(
+        self,
+        response: AgenticAnswerResponse,
+        *,
+        session_id: str | None,
+    ) -> None:
+        if not session_id or self.session_store is None:
+            return
+        if response.status not in {"completed", "rejected"}:
+            return
+        try:
+            self.session_store.append_turn(
+                session_id,
+                question=response.question,
+                answer=response.answer,
+                citations=[c.model_dump() for c in response.citations],
+                status=response.status,
+                thread_id=response.thread_id,
+            )
+        except SessionNotFoundError:
+            log.warning(
+                "session_append_skipped_missing session_id=%s thread_id=%s",
+                session_id,
+                response.thread_id,
+            )
+        except Exception:  # noqa: BLE001
+            log.exception(
+                "session_append_failed session_id=%s thread_id=%s",
+                session_id,
+                response.thread_id,
+            )
+
+    def start(
+        self,
+        *,
+        question: str,
+        k: int | None = None,
+        session_id: str | None = None,
+    ) -> AgenticAnswerResponse:
+        thread_id = uuid.uuid4().hex
+        settings = self.settings
+        resolved_k = k if k is not None else settings.answer_default_k
+        initial = self._initial_state(
+            question=question,
+            resolved_k=resolved_k,
+            session_id=session_id,
+        )
+        result = self._graph.invoke(initial, self._config(thread_id))
+        response = self._to_response(thread_id, result, resolved_k=resolved_k)
+        self._maybe_append_history(
+            response,
+            session_id=session_id or result.get("session_id"),
+        )
+        return response
+
+    def start_background_run(
+        self,
+        *,
+        question: str,
+        k: int | None = None,
+        session_id: str | None = None,
+    ) -> str:
         """Schedule a streamed graph run; return thread_id immediately."""
         thread_id = uuid.uuid4().hex
         resolved_k = k if k is not None else self.settings.answer_default_k
@@ -86,6 +154,7 @@ class AgenticAnswerRunner:
                     thread_id=thread_id,
                     question=question,
                     resolved_k=resolved_k,
+                    session_id=session_id,
                 )
             finally:
                 _BACKGROUND_THREADS.discard(worker)
@@ -105,15 +174,14 @@ class AgenticAnswerRunner:
         thread_id: str,
         question: str,
         resolved_k: int,
+        session_id: str | None = None,
     ) -> None:
         cfg = self._config(thread_id)
-        initial: AgenticAnswerState = {
-            "question": question,
-            "k": resolved_k,
-            "agent_trace": [],
-            "review_reasons": [],
-            "prompt_version": self.settings.answer_prompt_version,
-        }
+        initial = self._initial_state(
+            question=question,
+            resolved_k=resolved_k,
+            session_id=session_id,
+        )
         try:
             for update in self._graph.stream(initial, cfg, stream_mode="updates"):
                 if not isinstance(update, dict):
@@ -173,6 +241,10 @@ class AgenticAnswerRunner:
                 status,  # type: ignore[arg-type]
                 result=result.model_dump(),
             )
+            self._maybe_append_history(
+                result,
+                session_id=session_id or values.get("session_id"),
+            )
         except Exception as exc:  # noqa: BLE001
             log.exception("agentic_background_failed thread_id=%s", thread_id)
             self.activity_log.finish(
@@ -199,17 +271,23 @@ class AgenticAnswerRunner:
         if not pending:
             raise KeyError(thread_id)
 
+        session_id = (snapshot.values or {}).get("session_id")
         payload = {
             "decision": decision,
             "note": note,
             "adjusted_answer": adjusted_answer,
         }
         result = self._graph.invoke(Command(resume=payload), cfg)
-        return self._to_response(
+        response = self._to_response(
             thread_id,
             result,
             resolved_k=int(result.get("k") or self.settings.answer_default_k),
         )
+        self._maybe_append_history(
+            response,
+            session_id=session_id or result.get("session_id"),
+        )
+        return response
 
     def _to_response(
         self,
