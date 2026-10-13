@@ -83,6 +83,22 @@ def test_review_reasons_empty_on_good_state(monkeypatch) -> None:
     assert reasons == []
 
 
+def test_review_reasons_empty_on_scope_pin_only(monkeypatch) -> None:
+    monkeypatch.setenv("AGENTIC_CONFIDENCE_THRESHOLD", "0.55")
+    get_settings.cache_clear()
+    reasons = review_reasons(
+        {
+            "scope_pin_only": True,
+            "confidence": 1.0,
+            "citations_valid": True,
+            "no_evidence": False,
+            "hits": [],
+            "answer": "Entendido. Alcance cobranzas.",
+        }
+    )
+    assert reasons == []
+
+
 def test_review_reasons_on_no_evidence(monkeypatch) -> None:
     monkeypatch.setenv("AGENTIC_CONFIDENCE_THRESHOLD", "0.55")
     get_settings.cache_clear()
@@ -111,6 +127,34 @@ def test_review_reasons_on_low_confidence(monkeypatch) -> None:
     assert len(reasons) == 1
     assert "confidence" in reasons[0]
     assert "0.40" in reasons[0]
+
+
+def test_runner_scope_pin_only_skips_retrieve(monkeypatch) -> None:
+    reset_checkpointer()
+    get_settings.cache_clear()
+    monkeypatch.setattr(
+        "app.domain.graph.orchestrator._enabled_custom_keys",
+        lambda: [],
+    )
+    retriever = FakeRetriever([_hit()])
+    chat = FakeChat()
+    runner = AgenticAnswerRunner(
+        retriever=retriever,  # type: ignore[arg-type]
+        chat=chat,  # type: ignore[arg-type]
+    )
+    result = runner.start(
+        question="De aca en adelante solo hablemos de cobranzas",
+        k=3,
+    )
+    assert result.status == "completed"
+    assert result.domain == "cobranzas"
+    assert "cobranzas" in (result.answer or "").lower()
+    assert retriever.calls == 0
+    assert chat.calls == 0
+    assert [r.next_agent for r in result.routing_history] == [
+        "intent_framer",
+        "finish",
+    ]
 
 
 def test_runner_completes_with_evidence(monkeypatch) -> None:

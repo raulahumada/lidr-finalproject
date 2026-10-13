@@ -18,6 +18,10 @@ def review_reasons(
 ) -> list[str]:
     """Pure trigger list. Empty → ship without interrupt."""
     settings = settings or get_settings()
+    # Meta scope pin — confirmation only; corpus evidence is not expected.
+    if state.get("scope_pin_only"):
+        return []
+
     reasons: list[str] = []
 
     confidence = state.get("confidence")

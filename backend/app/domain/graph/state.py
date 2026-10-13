@@ -12,6 +12,9 @@ class AgenticAnswerState(TypedDict, total=False):
     session_id: str
     domain: str
     conversation_window: list[dict[str, Any]]
+    conversation_facts: dict[str, Any]
+    conversation_anchors: list[dict[str, Any]]
+    scope_pin_only: bool
     framed_query: str
     resolved_question: str
     resolved_substituted: list[str]

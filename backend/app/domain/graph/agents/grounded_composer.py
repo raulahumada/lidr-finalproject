@@ -42,6 +42,8 @@ def grounded_composer(state: AgenticAnswerState, config: RunnableConfig) -> dict
     memory = render_memory(
         list(state.get("conversation_window") or []),
         budget=memory_budget,
+        facts=state.get("conversation_facts"),
+        anchors=list(state.get("conversation_anchors") or []),
     )
     memory_text = memory.text if memory else ""
     custom_notes = state.get("custom_notes") or []
