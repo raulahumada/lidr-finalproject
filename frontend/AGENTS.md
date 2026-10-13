@@ -67,7 +67,14 @@ Primary path is **agentic live progress** + **multi-sesión** + **orquestador st
 
 ### Agents console (`/agents`)
 
-SideNav → **Agentes**. Carga el catálogo (`roles`, escalera, domains, knobs `agentic_orchestrator_max_steps` + `agentic_confidence_threshold`). Smoke: abrir `/agents` con backend up y ver la lista de roles.
+SideNav → **Agentes**. Studio master-detail (grafo + panel):
+
+- **Grafo estrella:** hub orquestador + fila de nodos del ladder (ClickableCard). Click = detalle.
+- **Builtin:** solo lectura. Solo `grounded_composer` muestra system prompt (Jinja `CodeBlock`). El resto es código → banner “Sin system prompt”.
+- **Custom:** tab Crear / editar / borrar / enable (Postgres); enabled → nodo en el ladder tras `corpus_fetcher`.
+- Knobs (max steps / confidence) debajo del grafo.
+
+Smoke: abrir `/agents`, click orquestador vs composer (ver diferencia de prompt), crear `risk_advisor`, verlo como nodo, editar, deshabilitar, borrar.
 
 ### Checkpointer / activity caveat
 
