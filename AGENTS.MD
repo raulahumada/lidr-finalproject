@@ -146,11 +146,13 @@ curl -s http://localhost:8000/api/v1/answer \
 
 ### Answer agentic (LangGraph)
 
-Pipeline fijo Metropol: `intent_framer` → `corpus_fetcher` → `grounded_composer` → `source_guard` → `escalation_gate`. Reusa retrieve/prompts v2 del path sync; **sin** Response CAG en el hot path. Checkpointer v1: **`MemorySaver`** (pausa/resume solo mientras viva el proceso Uvicorn; un reload pierde threads).
+Pipeline fijo Metropol: `intent_framer` → `corpus_fetcher` → `grounded_composer` → `source_guard` → `escalation_gate`. Reusa retrieve/prompts v2 del path sync; **sin** Response CAG en el hot path.
+
+**Checkpointer:** por defecto **Postgres** (`AGENTIC_CHECKPOINTER=auto` + `DATABASE_URL`) — pause/resume sobrevive reinicios de Uvicorn (tablas LangGraph vía `setup()` al boot; no Alembic). `AGENTIC_CHECKPOINTER=memory` fuerza `MemorySaver` in-process (tests / offline).
 
 Si confianza < `AGENTIC_CONFIDENCE_THRESHOLD` (default `0.55`), sin evidencia, o citas inválidas → **202** + `thread_id`; luego resume.
 
-**Live progress (consola):** `POST /answer/agentic/start` agenda en background (HTTP 202 + `thread_id`) y `GET /answer/agentic/{thread_id}/progress` narra nodos mientras `running`. El activity log es **in-process** (mismo caveat que MemorySaver: se pierde al reload).
+**Live progress (consola):** `POST /answer/agentic/start` agenda en background (HTTP 202 + `thread_id`) y `GET /answer/agentic/{thread_id}/progress` narra nodos mientras `running`. El **activity log** sigue **in-process** (se pierde al reload; un thread pausado igual se puede `resume` si el checkpointer es Postgres).
 
 ```bash
 cd backend && source .venv/bin/activate
@@ -200,7 +202,7 @@ Scripts: `dev`, `build`, `start`, `lint`.
 ## Estado actual / gaps
 
 - Sin package/workspace root; cada carpeta se instala y corre por separado.
-- RAG: Alembic + `POST /api/v1/search` + ingest + `POST /answer` + `POST /answer/agentic` (+ `/start` + `/progress`; MemorySaver + activity log in-process; follow-up: orchestrator + Postgres checkpointer).
+- RAG: Alembic + `POST /api/v1/search` + ingest + `POST /answer` + `POST /answer/agentic` (+ `/start` + `/progress`; Postgres checkpointer + activity log in-process; follow-up: orchestrator).
 - Items CRUD sigue en memoria.
 - Front chat agentic en `/answer` (Astryx); sin package de tipos compartidos monorepo.
 
