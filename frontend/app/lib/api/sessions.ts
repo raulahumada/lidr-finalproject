@@ -23,10 +23,16 @@ export type HistoryTurnCitation = {
   excerpt: string;
 };
 
+export type HistoryTurnNote = {
+  key: string;
+  note: string;
+};
+
 export type HistoryTurn = {
   question: string;
   answer: string | null;
   citations: HistoryTurnCitation[];
+  custom_notes?: HistoryTurnNote[];
   status: "completed" | "rejected";
   thread_id: string | null;
   created_at: string;

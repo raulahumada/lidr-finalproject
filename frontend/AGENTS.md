@@ -57,6 +57,7 @@ Primary path is **agentic live progress** + **multi-sesión** + **orquestador st
 - **`session_id` ≠ `thread_id`:** sesión = conversación durable (transcript); thread = un run del grafo.
 - **Domain tag** (Selector en el composer): `auto` no manda `domain`; `ventas|cobranzas|operacion|tenela|general` se envía en el start. El chip muestra el dominio efectivo del progress/respuesta.
 - **Ruteo:** la UI lista `routing_history` (especialista elegido + razón) junto al activity del hub/especialistas.
+- **Aportes custom:** si progress/terminal trae `custom_notes`, `/answer` muestra List “Aportes custom” (key + nota, preview ~400 chars) en vivo; al `completed`/`rejected` se persisten en el turn del session history y siguen visibles en el transcript. Smoke: crear custom en `/agents` → preguntar en `/answer` → ver la nota tras `prompt_specialist` y después de que cargue el historial.
 - Sesiones en el **SideNav del AppShell** (sección Conversaciones), no un segundo sidebar.
 - Podés cambiar de sesión mientras corre un run: **no se cancela**; el poll sigue y al volver ves el resultado / history.
 - Deep link: `/answer?session=<id>` restaura el history desde el backend.

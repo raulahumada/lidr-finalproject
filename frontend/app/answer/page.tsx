@@ -41,6 +41,7 @@ import {
   resumeAgenticAnswer,
   runAgenticWithProgress,
   type AgenticAnswerResponse,
+  type CustomAgentNote,
   type GraphActivityEntry,
   type MetropolDomain,
   type RoutingHistoryEntry,
@@ -156,6 +157,46 @@ function buildTraceCalls(data: AgenticAnswerResponse) {
   }));
 }
 
+const NOTE_PREVIEW_CHARS = 400;
+
+function truncateNote(note: string): string {
+  const text = note.trim();
+  if (text.length <= NOTE_PREVIEW_CHARS) return text;
+  return `${text.slice(0, NOTE_PREVIEW_CHARS)}…`;
+}
+
+function CustomNotesList({
+  notes,
+  listKeyPrefix,
+}: {
+  notes: CustomAgentNote[];
+  listKeyPrefix: string;
+}) {
+  if (notes.length === 0) return null;
+  return (
+    <ChatMessageBubble variant="ghost" width="100%">
+      <List
+        header={<Heading level={3}>Aportes custom</Heading>}
+        hasDividers
+        density="compact"
+      >
+        {notes.map((item, i) => (
+          <ListItem
+            key={`${listKeyPrefix}-${item.key}-${i}`}
+            label={item.key}
+            description={
+              // ReactNode avoids Astryx single-line ellipsis on string descriptions
+              <Text type="supporting" color="secondary" textWrap="pretty">
+                {truncateNote(item.note)}
+              </Text>
+            }
+          />
+        ))}
+      </List>
+    </ChatMessageBubble>
+  );
+}
+
 function AnswerPageInner() {
   const searchParams = useSearchParams();
   const sessionFromUrl = searchParams.get("session");
@@ -179,6 +220,7 @@ function AnswerPageInner() {
   const [activity, setActivity] = useState<GraphActivityEntry[]>([]);
   const [liveDomain, setLiveDomain] = useState<string | null>(null);
   const [liveRouting, setLiveRouting] = useState<RoutingHistoryEntry[]>([]);
+  const [liveCustomNotes, setLiveCustomNotes] = useState<CustomAgentNote[]>([]);
   const [ui, setUi] = useState<UiState>({ status: "idle" });
   const [isPending, startTransition] = useTransition();
 
@@ -325,6 +367,7 @@ function AnswerPageInner() {
     setActivity([]);
     setLiveDomain(null);
     setLiveRouting([]);
+    setLiveCustomNotes([]);
     setUi({ status: "loading", question });
 
     void (async () => {
@@ -350,6 +393,7 @@ function AnswerPageInner() {
                 setActivity(progress.activity);
                 setLiveDomain(progress.domain);
                 setLiveRouting(progress.routing_history || []);
+                setLiveCustomNotes(progress.custom_notes || []);
               } else {
                 const stash = stashRef.current[sessionId];
                 if (stash && stash.ui.status === "loading") {
@@ -486,6 +530,10 @@ function AnswerPageInner() {
     resultData?.routing_history?.length
       ? resultData.routing_history
       : liveRouting;
+  const shownCustomNotes =
+    resultData?.custom_notes?.length
+      ? resultData.custom_notes
+      : liveCustomNotes;
 
   return (
     <Layout
@@ -693,6 +741,10 @@ function AnswerPageInner() {
                           </Text>
                         </ChatMessageBubble>
                       ) : null}
+                      <CustomNotesList
+                        notes={turn.custom_notes || []}
+                        listKeyPrefix={`hist-note-${index}`}
+                      />
                       {turn.citations.length > 0 ? (
                         <ChatMessageBubble variant="ghost" width="100%">
                           <List
@@ -771,6 +823,10 @@ function AnswerPageInner() {
                             </List>
                           </ChatMessageBubble>
                         ) : null}
+                        <CustomNotesList
+                          notes={shownCustomNotes}
+                          listKeyPrefix="live-note"
+                        />
                         <ChatMessageBubble variant="ghost">
                           <Text type="body" color="secondary">
                             Corriendo pipeline agentic…
@@ -819,6 +875,10 @@ function AnswerPageInner() {
                             </List>
                           </ChatMessageBubble>
                         ) : null}
+                        <CustomNotesList
+                          notes={shownCustomNotes}
+                          listKeyPrefix="done-note"
+                        />
 
                         {resultData.answer ? (
                           <ChatMessageBubble variant="ghost" width="100%">
