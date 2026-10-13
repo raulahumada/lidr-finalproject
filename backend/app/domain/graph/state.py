@@ -29,5 +29,6 @@ class AgenticAnswerState(TypedDict, total=False):
     next_agent: str
     route_reason: str
     supervisor_steps: int
+    custom_notes: Annotated[list[dict[str, Any]], operator.add]
     routing_history: Annotated[list[dict[str, Any]], operator.add]
     agent_trace: Annotated[list[dict[str, Any]], operator.add]

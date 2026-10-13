@@ -6,7 +6,7 @@ from datetime import datetime
 from typing import Dict, List, Optional
 
 from pgvector.sqlalchemy import Vector
-from sqlalchemy import BigInteger, ForeignKey, Index, String, Text, func, text
+from sqlalchemy import BigInteger, Boolean, ForeignKey, Index, String, Text, func, text
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 from sqlalchemy.types import DateTime
@@ -75,6 +75,30 @@ class ConversationSessionRow(Base):
     title: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     history: Mapped[List] = mapped_column(
         JSONB, nullable=False, server_default=text("'[]'::jsonb")
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now()
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        nullable=False,
+        server_default=func.now(),
+        onupdate=func.now(),
+    )
+
+
+class AgentProfileRow(Base):
+    """Custom LLM agent profile (builtins live in code/Jinja, not here)."""
+
+    __tablename__ = "agent_profiles"
+    __table_args__ = (Index("ix_agent_profiles_enabled", "enabled"),)
+
+    key: Mapped[str] = mapped_column(String(64), primary_key=True)
+    label: Mapped[str] = mapped_column(String(120), nullable=False)
+    role: Mapped[str] = mapped_column(Text, nullable=False)
+    system_prompt: Mapped[str] = mapped_column(Text, nullable=False)
+    enabled: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, server_default=text("true")
     )
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, server_default=func.now()

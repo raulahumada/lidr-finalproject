@@ -10,10 +10,15 @@ from app.domain.graph.agents import (
     corpus_fetcher,
     grounded_composer,
     intent_framer,
+    prompt_specialist,
     source_guard,
 )
 from app.domain.graph.gate import escalation_gate
-from app.domain.graph.orchestrator import FALLBACK_LADDER, orchestrator
+from app.domain.graph.orchestrator import (
+    FALLBACK_LADDER,
+    PROMPT_SPECIALIST_NODE,
+    orchestrator,
+)
 from app.domain.graph.state import AgenticAnswerState
 
 log = logging.getLogger(__name__)
@@ -32,15 +37,17 @@ def build_agentic_answer_graph(checkpointer=None):
     builder.add_node(
         "orchestrator",
         orchestrator,
-        destinations=(*FALLBACK_LADDER, "escalation_gate"),
+        destinations=(*FALLBACK_LADDER, PROMPT_SPECIALIST_NODE, "escalation_gate"),
     )
     for name, fn in AGENT_NODES.items():
         builder.add_node(name, fn)
+    builder.add_node(PROMPT_SPECIALIST_NODE, prompt_specialist)
     builder.add_node("escalation_gate", escalation_gate)
 
     builder.add_edge(START, "orchestrator")
     for name in AGENT_NODES:
         builder.add_edge(name, "orchestrator")
+    builder.add_edge(PROMPT_SPECIALIST_NODE, "orchestrator")
     builder.add_edge("escalation_gate", END)
 
     compiled = builder.compile(checkpointer=checkpointer)

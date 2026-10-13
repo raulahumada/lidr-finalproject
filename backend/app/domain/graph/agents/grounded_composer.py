@@ -44,6 +44,16 @@ def grounded_composer(state: AgenticAnswerState, config: RunnableConfig) -> dict
         budget=memory_budget,
     )
     memory_text = memory.text if memory else ""
+    custom_notes = state.get("custom_notes") or []
+    if custom_notes:
+        note_lines = [
+            f"- {n.get('key')}: {n.get('note')}"
+            for n in custom_notes
+            if isinstance(n, dict) and n.get("note")
+        ]
+        if note_lines:
+            block = "Notas de agentes custom (no citables):\n" + "\n".join(note_lines)
+            memory_text = f"{memory_text}\n\n{block}".strip() if memory_text else block
     memory_tokens = memory.tokens_used if memory else 0
     # Evidence wins: charge memory inside the context budget, never on top.
     evidence_budget = max(500, max_tokens - memory_tokens)

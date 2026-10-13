@@ -18,7 +18,27 @@ FALLBACK_LADDER = (
     "grounded_composer",
     "source_guard",
 )
-_ORDER = list(FALLBACK_LADDER)
+
+PROMPT_SPECIALIST_NODE = "prompt_specialist"
+
+
+def _enabled_custom_keys() -> list[str]:
+    try:
+        from app.domain.graph.agent_store import AgentStore
+        from app.foundation.persistence.database import get_session_factory
+
+        return AgentStore(get_session_factory()).list_enabled_keys()
+    except Exception as exc:  # noqa: BLE001
+        log.warning("orchestrator_custom_keys_unavailable: %s", exc)
+        return []
+
+
+def effective_ladder() -> list[str]:
+    """Builtin ladder with enabled customs after corpus_fetcher."""
+    customs = _enabled_custom_keys()
+    base = list(FALLBACK_LADDER)
+    idx = base.index("corpus_fetcher") + 1
+    return base[:idx] + customs + base[idx:]
 
 
 def _already_ran(agent: str, state: AgenticAnswerState) -> bool:
@@ -28,11 +48,13 @@ def _already_ran(agent: str, state: AgenticAnswerState) -> bool:
     )
 
 
-def _inputs_ready(agent: str, state: AgenticAnswerState) -> bool:
+def _inputs_ready(agent: str, state: AgenticAnswerState, *, customs: set[str]) -> bool:
     if agent == "intent_framer":
         return bool((state.get("question") or "").strip())
     if agent == "corpus_fetcher":
         return bool(state.get("framed_query") or state.get("question"))
+    if agent in customs:
+        return _already_ran("corpus_fetcher", state)
     if agent == "grounded_composer":
         return _already_ran("corpus_fetcher", state)
     if agent == "source_guard":
@@ -40,17 +62,27 @@ def _inputs_ready(agent: str, state: AgenticAnswerState) -> bool:
     return False
 
 
-def _is_legal(target: str, state: AgenticAnswerState) -> bool:
+def _is_legal(
+    target: str,
+    state: AgenticAnswerState,
+    *,
+    order: list[str],
+    customs: set[str],
+) -> bool:
     if target == "finish":
         return True
-    if target not in _ORDER:
+    if target not in order:
         return False
-    return _inputs_ready(target, state) and not _already_ran(target, state)
+    return _inputs_ready(target, state, customs=customs) and not _already_ran(
+        target, state
+    )
 
 
-def _fallback_next(state: AgenticAnswerState) -> str:
-    for agent in _ORDER:
-        if _is_legal(agent, state):
+def _fallback_next(state: AgenticAnswerState, *, order: list[str] | None = None) -> str:
+    ladder = order if order is not None else effective_ladder()
+    customs = {k for k in ladder if k not in FALLBACK_LADDER}
+    for agent in ladder:
+        if _is_legal(agent, state, order=ladder, customs=customs):
             return agent
     return "finish"
 
@@ -60,6 +92,8 @@ def orchestrator(state: AgenticAnswerState) -> Command:
     settings = get_settings()
     max_steps = max(1, int(settings.agentic_orchestrator_max_steps))
     step = int(state.get("supervisor_steps") or 0)
+    ladder = effective_ladder()
+    customs = {k for k in ladder if k not in FALLBACK_LADDER}
 
     if step >= max_steps:
         target = "finish"
@@ -67,12 +101,12 @@ def orchestrator(state: AgenticAnswerState) -> Command:
         source = "limit"
         log.warning("orchestrator_step_budget_exhausted step=%s", step)
     else:
-        target = _fallback_next(state)
+        target = _fallback_next(state, order=ladder)
         reason = f"dependency ladder selected {target!r}"
         source = "fallback"
-        if not _is_legal(target, state) and target != "finish":
+        if not _is_legal(target, state, order=ladder, customs=customs) and target != "finish":
             overridden = target
-            target = _fallback_next(state)
+            target = _fallback_next(state, order=ladder)
             reason = (
                 f"proposed {overridden!r}, which is not legal; overridden to {target!r}"
             )
@@ -83,7 +117,13 @@ def orchestrator(state: AgenticAnswerState) -> Command:
                 target,
             )
 
-    goto = "escalation_gate" if target == "finish" else target
+    if target == "finish":
+        goto = "escalation_gate"
+    elif target in customs:
+        goto = PROMPT_SPECIALIST_NODE
+    else:
+        goto = target
+
     update: dict[str, Any] = {
         "next_agent": target,
         "route_reason": reason,
