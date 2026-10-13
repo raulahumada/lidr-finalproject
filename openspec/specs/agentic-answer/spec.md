@@ -143,3 +143,14 @@ Agentic submit endpoints SHALL accept an optional `domain` override. Omitted mea
 #### Scenario: Submit with domain override
 - **WHEN** `POST /answer/agentic/start` includes a valid `domain`
 - **THEN** the background run is tagged with that domain
+
+### Requirement: Agentic outcomes expose custom agent notes
+Agentic completed, paused, and rejected payloads SHALL include `custom_notes`: a list of objects with at least `key` (custom agent id) and `note` (text contribution). When no custom specialist ran, the list SHALL be empty. Terminal session history turns SHALL persist those notes when a `session_id` is bound.
+
+#### Scenario: Notes present after custom ran
+- **WHEN** an agentic run completes and graph state contains custom notes
+- **THEN** the response includes those notes with matching keys and text
+
+#### Scenario: Empty when no customs
+- **WHEN** an agentic run completes with no custom notes in state
+- **THEN** `custom_notes` is an empty list
