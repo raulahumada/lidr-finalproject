@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from fastapi import APIRouter, Depends, HTTPException, status
 
+from app.api.console_user import get_console_user_id
 from app.dependencies import get_session_store
 from app.generation.conversation.store import SessionNotFoundError, SessionStore
 from app.schemas.session import (
@@ -24,24 +25,30 @@ def _view(raw: dict) -> SessionView:
 @router.post("", response_model=SessionCreated, status_code=status.HTTP_201_CREATED)
 def create_session(
     store: SessionStore = Depends(get_session_store),
+    owner_id: str | None = Depends(get_console_user_id),
 ) -> SessionCreated:
-    view = store.create()
+    view = store.create(owner_id=owner_id)
     return SessionCreated(session_id=view["session_id"])
 
 
 @list_router.get("", response_model=list[SessionSummary])
 def list_sessions(
     store: SessionStore = Depends(get_session_store),
+    owner_id: str | None = Depends(get_console_user_id),
 ) -> list[SessionSummary]:
-    return [SessionSummary.model_validate(item) for item in store.list_summaries()]
+    return [
+        SessionSummary.model_validate(item)
+        for item in store.list_summaries(owner_id=owner_id)
+    ]
 
 
 @router.get("/{session_id}", response_model=SessionView)
 def get_session(
     session_id: str,
     store: SessionStore = Depends(get_session_store),
+    owner_id: str | None = Depends(get_console_user_id),
 ) -> SessionView:
-    view = store.get(session_id)
+    view = store.get(session_id, owner_id=owner_id)
     if view is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -55,9 +62,10 @@ def rename_session(
     session_id: str,
     body: SessionUpdate,
     store: SessionStore = Depends(get_session_store),
+    owner_id: str | None = Depends(get_console_user_id),
 ) -> SessionView:
     try:
-        return _view(store.rename(session_id, body.title))
+        return _view(store.rename(session_id, body.title, owner_id=owner_id))
     except SessionNotFoundError as exc:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -69,9 +77,10 @@ def rename_session(
 def delete_session(
     session_id: str,
     store: SessionStore = Depends(get_session_store),
+    owner_id: str | None = Depends(get_console_user_id),
 ) -> None:
     try:
-        store.delete(session_id)
+        store.delete(session_id, owner_id=owner_id)
     except SessionNotFoundError as exc:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,

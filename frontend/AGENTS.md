@@ -45,7 +45,7 @@ Two layers (not interchangeable):
 1. **Console people** — Auth.js (email/password; Google deferred) + Prisma identity DB (`AUTH_DATABASE_URL`).
 2. **Service token** — FastAPI `SERVICE_TOKEN`; the Next BFF attaches `Authorization: Bearer` server-side. Never `NEXT_PUBLIC_SERVICE_TOKEN`.
 
-Browser clients call same-origin `/api/v1/...` (`getApiBaseUrl()` → `""`). Route handler `app/api/v1/[...path]` relays to `AI_SERVICE_URL` with the token + `X-Console-User`.
+Browser clients call same-origin `/api/v1/...` (`getApiBaseUrl()` → `""`). Route handler `app/api/v1/[...path]` relays to `AI_SERVICE_URL` with the token + `X-Console-User` (Auth.js user id). That header scopes chat sessions: each operator only lists/opens their own conversations in the SideNav. Smoke: two users → each sees only their chats; deep-link to the other’s `?session=` → empty/404.
 
 ### Setup (identity DB)
 

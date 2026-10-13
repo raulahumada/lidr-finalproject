@@ -19,6 +19,9 @@ from app.generation.conversation.models import (
 
 _TITLE_MAX = 80
 
+# Sentinel: skip ownership filter (internal runner after API already scoped).
+_UNSCOPED = object()
+
 
 class SessionNotFoundError(KeyError):
     """Raised when a session_id was never minted or was deleted."""
@@ -35,17 +38,24 @@ def _truncate_title(question: str) -> str:
     return text[: _TITLE_MAX - 1].rstrip() + "…"
 
 
+def _visible(row: ConversationSessionRow, owner_id: str | None) -> bool:
+    if owner_id is None:
+        return row.owner_id is None
+    return row.owner_id == owner_id
+
+
 class SessionStore:
     def __init__(self, session_factory: sessionmaker[Session]) -> None:
         self._session_factory = session_factory
 
-    def create(self) -> dict[str, Any]:
+    def create(self, *, owner_id: str | None = None) -> dict[str, Any]:
         session_id = uuid.uuid4().hex
         now = _utcnow()
         with self._session_factory() as db:
             row = ConversationSessionRow(
                 id=session_id,
                 title=None,
+                owner_id=owner_id,
                 history=[],
                 memory={},
                 created_at=now,
@@ -56,13 +66,16 @@ class SessionStore:
             db.refresh(row)
             return self._to_view(row)
 
-    def list_summaries(self) -> list[dict[str, Any]]:
+    def list_summaries(self, *, owner_id: str | None = None) -> list[dict[str, Any]]:
         with self._session_factory() as db:
-            rows = db.scalars(
-                select(ConversationSessionRow).order_by(
-                    ConversationSessionRow.updated_at.desc()
-                )
-            ).all()
+            stmt = select(ConversationSessionRow).order_by(
+                ConversationSessionRow.updated_at.desc()
+            )
+            if owner_id is None:
+                stmt = stmt.where(ConversationSessionRow.owner_id.is_(None))
+            else:
+                stmt = stmt.where(ConversationSessionRow.owner_id == owner_id)
+            rows = db.scalars(stmt).all()
             return [
                 {
                     "session_id": row.id,
@@ -74,23 +87,46 @@ class SessionStore:
                 for row in rows
             ]
 
-    def get(self, session_id: str) -> dict[str, Any] | None:
+    def get(
+        self,
+        session_id: str,
+        *,
+        owner_id: Any = _UNSCOPED,
+    ) -> dict[str, Any] | None:
+        """Load a session.
+
+        Pass ``owner_id=...`` (including ``None`` for the unowned bucket) to
+        enforce scope. Omit ``owner_id`` for unchecked access (agentic runner).
+        """
         with self._session_factory() as db:
             row = db.get(ConversationSessionRow, session_id)
             if row is None:
                 return None
+            if owner_id is not _UNSCOPED and not _visible(row, owner_id):
+                return None
             return self._to_view(row)
 
-    def require(self, session_id: str) -> dict[str, Any]:
-        view = self.get(session_id)
+    def require(
+        self,
+        session_id: str,
+        *,
+        owner_id: Any = _UNSCOPED,
+    ) -> dict[str, Any]:
+        view = self.get(session_id, owner_id=owner_id)
         if view is None:
             raise SessionNotFoundError(session_id)
         return view
 
-    def rename(self, session_id: str, title: str | None) -> dict[str, Any]:
+    def rename(
+        self,
+        session_id: str,
+        title: str | None,
+        *,
+        owner_id: str | None = None,
+    ) -> dict[str, Any]:
         with self._session_factory() as db:
             row = db.get(ConversationSessionRow, session_id)
-            if row is None:
+            if row is None or not _visible(row, owner_id):
                 raise SessionNotFoundError(session_id)
             cleaned = title.strip() if isinstance(title, str) else None
             row.title = cleaned or None
@@ -99,10 +135,10 @@ class SessionStore:
             db.refresh(row)
             return self._to_view(row)
 
-    def delete(self, session_id: str) -> None:
+    def delete(self, session_id: str, *, owner_id: str | None = None) -> None:
         with self._session_factory() as db:
             row = db.get(ConversationSessionRow, session_id)
-            if row is None:
+            if row is None or not _visible(row, owner_id):
                 raise SessionNotFoundError(session_id)
             db.delete(row)
             db.commit()
@@ -120,6 +156,7 @@ class SessionStore:
         custom_notes: list[dict[str, Any]] | None = None,
         facts_update: ConversationFacts | None = None,
         new_anchors: list[Anchor] | None = None,
+        owner_id: Any = _UNSCOPED,
     ) -> dict[str, Any]:
         if status not in {"completed", "rejected"}:
             raise ValueError(f"Cannot append non-terminal status: {status}")
@@ -165,6 +202,8 @@ class SessionStore:
             row = db.get(ConversationSessionRow, session_id)
             if row is None:
                 raise SessionNotFoundError(session_id)
+            if owner_id is not _UNSCOPED and not _visible(row, owner_id):
+                raise SessionNotFoundError(session_id)
             history = list(row.history or [])
             history.append(turn)
             row.history = history
@@ -194,6 +233,7 @@ class SessionStore:
         return {
             "session_id": row.id,
             "title": row.title,
+            "owner_id": row.owner_id,
             "history": list(row.history or []),
             "memory": memory.to_dict(),
             "created_at": row.created_at,

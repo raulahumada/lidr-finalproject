@@ -73,3 +73,32 @@ def test_store_create_append_and_auto_title() -> None:
         store.require("missing-session")
 
     store.delete(session_id)
+
+
+@pytest.mark.integration
+def test_store_owner_isolation() -> None:
+    if not _postgres_available():
+        pytest.skip("DATABASE_URL not reachable")
+
+    get_session_factory.cache_clear()
+    store = SessionStore(get_session_factory())
+    a = store.create(owner_id="user-a")["session_id"]
+    b = store.create(owner_id="user-b")["session_id"]
+    orphan = store.create()["session_id"]
+
+    a_ids = {item["session_id"] for item in store.list_summaries(owner_id="user-a")}
+    assert a in a_ids
+    assert b not in a_ids
+    assert orphan not in a_ids
+
+    assert store.get(a, owner_id="user-b") is None
+    assert store.get(a, owner_id="user-a") is not None
+    assert store.get(orphan, owner_id="user-a") is None
+    assert store.get(orphan, owner_id=None) is not None
+
+    with pytest.raises(SessionNotFoundError):
+        store.delete(a, owner_id="user-b")
+
+    store.delete(a, owner_id="user-a")
+    store.delete(b, owner_id="user-b")
+    store.delete(orphan, owner_id=None)
