@@ -32,6 +32,21 @@ def test_ladder_advances_after_framer(monkeypatch) -> None:
     assert _fallback_next(state) == "corpus_fetcher"
 
 
+def test_ladder_finishes_after_scope_pin(monkeypatch) -> None:
+    monkeypatch.setattr(
+        "app.domain.graph.orchestrator._enabled_custom_keys",
+        lambda: [],
+    )
+    state = {
+        "question": "De acá en adelante solo cobranzas",
+        "framed_query": "De acá en adelante solo cobranzas",
+        "scope_pin_only": True,
+        "answer": "Entendido.",
+        "routing_history": [{"next_agent": "intent_framer"}],
+    }
+    assert _fallback_next(state) == "finish"
+
+
 def test_effective_ladder_inserts_customs_after_corpus(monkeypatch) -> None:
     monkeypatch.setattr(
         "app.domain.graph.orchestrator._enabled_custom_keys",

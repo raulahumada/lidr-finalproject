@@ -17,6 +17,9 @@ from app.domain.graph.checkpointer import get_checkpointer
 from app.domain.graph.domain_tag import detect_domain, parse_domain
 from app.domain.graph.state import AgenticAnswerState
 from app.foundation.llm.chat import ChatClient
+from app.generation.conversation.anchors import detect_anchors, pinned_domain
+from app.generation.conversation.facts import facts_from_turn
+from app.generation.conversation.models import SessionMemory
 from app.generation.conversation.store import SessionNotFoundError, SessionStore
 from app.generation.rag.retriever import SemanticRetriever
 from app.schemas.agentic_answer import (
@@ -67,15 +70,26 @@ class AgenticAnswerRunner:
             }
         }
 
-    def _conversation_window(self, session_id: str | None) -> list[dict[str, Any]]:
+    def _session_view(self, session_id: str | None) -> dict[str, Any] | None:
         if not session_id or self.session_store is None:
-            return []
-        view = self.session_store.get(session_id)
+            return None
+        return self.session_store.get(session_id)
+
+    def _conversation_window(self, session_id: str | None) -> list[dict[str, Any]]:
+        view = self._session_view(session_id)
         if view is None:
             return []
         history = list(view.get("history") or [])
         max_turns = max(1, int(self.settings.conversation_max_turns))
         return history[-max_turns:]
+
+    def _session_memory(self, session_id: str | None) -> SessionMemory:
+        view = self._session_view(session_id)
+        if view is None:
+            return SessionMemory()
+        return SessionMemory.from_dict(
+            view.get("memory") if isinstance(view.get("memory"), dict) else None
+        )
 
     def _initial_state(
         self,
@@ -86,8 +100,14 @@ class AgenticAnswerRunner:
         domain: str | None = None,
     ) -> AgenticAnswerState:
         window = self._conversation_window(session_id)
+        memory = self._session_memory(session_id)
         override = parse_domain(domain)
-        resolved_domain = override or detect_domain(question, window=window)
+        # Request domain wins; else session anchor; else heuristic detect.
+        resolved_domain = (
+            override
+            or pinned_domain(memory.anchors)
+            or detect_domain(question, window=window)
+        )
         initial: AgenticAnswerState = {
             "question": question,
             "k": resolved_k,
@@ -98,6 +118,8 @@ class AgenticAnswerRunner:
             "supervisor_steps": 0,
             "prompt_version": self.settings.answer_prompt_version,
             "conversation_window": window,
+            "conversation_facts": memory.facts.to_dict(),
+            "conversation_anchors": [a.to_dict() for a in memory.anchors],
         }
         if session_id:
             initial["session_id"] = session_id
@@ -113,16 +135,25 @@ class AgenticAnswerRunner:
             return
         if response.status not in {"completed", "rejected"}:
             return
+        citations = [c.model_dump() for c in response.citations]
+        turn_facts = facts_from_turn(
+            question=response.question,
+            domain=response.domain,
+            citations=citations,
+        )
+        new_anchors = detect_anchors(response.question)
         try:
             self.session_store.append_turn(
                 session_id,
                 question=response.question,
                 answer=response.answer,
-                citations=[c.model_dump() for c in response.citations],
+                citations=citations,
                 status=response.status,
                 thread_id=response.thread_id,
                 resolved_question=response.resolved_question,
                 custom_notes=[n.model_dump() for n in response.custom_notes],
+                facts_update=turn_facts,
+                new_anchors=new_anchors or None,
             )
         except SessionNotFoundError:
             log.warning(

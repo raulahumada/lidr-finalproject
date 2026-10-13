@@ -10,6 +10,12 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session, sessionmaker
 
 from app.foundation.persistence.models import ConversationSessionRow
+from app.generation.conversation.models import (
+    Anchor,
+    ConversationFacts,
+    SessionMemory,
+    merge_anchors,
+)
 
 _TITLE_MAX = 80
 
@@ -41,6 +47,7 @@ class SessionStore:
                 id=session_id,
                 title=None,
                 history=[],
+                memory={},
                 created_at=now,
                 updated_at=now,
             )
@@ -111,6 +118,8 @@ class SessionStore:
         thread_id: str | None = None,
         resolved_question: str | None = None,
         custom_notes: list[dict[str, Any]] | None = None,
+        facts_update: ConversationFacts | None = None,
+        new_anchors: list[Anchor] | None = None,
     ) -> dict[str, Any]:
         if status not in {"completed", "rejected"}:
             raise ValueError(f"Cannot append non-terminal status: {status}")
@@ -161,6 +170,17 @@ class SessionStore:
             row.history = history
             if not row.title:
                 row.title = _truncate_title(question)
+
+            if facts_update is not None or new_anchors:
+                bag = SessionMemory.from_dict(
+                    row.memory if isinstance(row.memory, dict) else None
+                )
+                if facts_update is not None:
+                    bag.facts = bag.facts.merge_with(facts_update)
+                if new_anchors:
+                    bag.anchors = merge_anchors(bag.anchors, list(new_anchors))
+                row.memory = bag.to_dict()
+
             row.updated_at = _utcnow()
             db.commit()
             db.refresh(row)
@@ -168,10 +188,14 @@ class SessionStore:
 
     @staticmethod
     def _to_view(row: ConversationSessionRow) -> dict[str, Any]:
+        memory = SessionMemory.from_dict(
+            row.memory if isinstance(getattr(row, "memory", None), dict) else None
+        )
         return {
             "session_id": row.id,
             "title": row.title,
             "history": list(row.history or []),
+            "memory": memory.to_dict(),
             "created_at": row.created_at,
             "updated_at": row.updated_at,
             "turn_count": len(row.history or []),

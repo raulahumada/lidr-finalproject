@@ -51,6 +51,9 @@ def _already_ran(agent: str, state: AgenticAnswerState) -> bool:
 def _inputs_ready(agent: str, state: AgenticAnswerState, *, customs: set[str]) -> bool:
     if agent == "intent_framer":
         return bool((state.get("question") or "").strip())
+    # Scope-pin meta turns already have a confirmation answer — skip RAG ladder.
+    if state.get("scope_pin_only"):
+        return False
     if agent == "corpus_fetcher":
         return bool(state.get("framed_query") or state.get("question"))
     if agent in customs:

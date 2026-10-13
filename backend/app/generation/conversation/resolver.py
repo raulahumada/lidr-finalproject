@@ -10,6 +10,8 @@ import re
 from dataclasses import dataclass
 from typing import Any
 
+from app.generation.conversation.models import Anchor, ConversationFacts
+
 MAX_REFERENTS = 2
 _PRIOR_SNIPPET_MAX = 120
 
@@ -66,19 +68,66 @@ def _referents_from_window(window: list[dict[str, Any]]) -> list[str]:
     return named[:MAX_REFERENTS]
 
 
+def _referents_from_memory(
+    facts: ConversationFacts | dict[str, Any] | None,
+    anchors: list[Anchor] | list[dict[str, Any]] | None,
+) -> list[str]:
+    named: list[str] = []
+    parsed = (
+        facts
+        if isinstance(facts, ConversationFacts)
+        else ConversationFacts.from_dict(facts if isinstance(facts, dict) else None)
+    )
+    for entity in parsed.entities:
+        if entity and entity not in named:
+            named.append(entity)
+        if len(named) >= MAX_REFERENTS:
+            return named[:MAX_REFERENTS]
+    for domain in parsed.domains:
+        label = f"dominio {domain}"
+        if domain and label not in named:
+            named.append(label)
+        if len(named) >= MAX_REFERENTS:
+            return named[:MAX_REFERENTS]
+    for item in anchors or []:
+        if isinstance(item, Anchor):
+            if item.kind == "domain" and item.value:
+                label = f"dominio {item.value}"
+                if label not in named:
+                    named.append(label)
+        elif isinstance(item, dict) and item.get("kind") == "domain":
+            value = str(item.get("value") or "").strip()
+            if value:
+                label = f"dominio {value}"
+                if label not in named:
+                    named.append(label)
+        if len(named) >= MAX_REFERENTS:
+            break
+    return named[:MAX_REFERENTS]
+
+
 def resolve(
     question: str,
     window: list[dict[str, Any]] | None,
+    *,
+    facts: ConversationFacts | dict[str, Any] | None = None,
+    anchors: list[Anchor] | list[dict[str, Any]] | None = None,
 ) -> ResolvedQuestion:
     """Name the referent when the question only points at the prior turn."""
     text = (question or "").strip()
-    if not text or not window:
+    if not text:
         return ResolvedQuestion(text=text, substituted=[])
 
     if not _REFERENTIAL.search(text):
         return ResolvedQuestion(text=text, substituted=[])
 
-    named = _referents_from_window(window)
+    named = _referents_from_window(window or [])
+    if len(named) < MAX_REFERENTS:
+        for extra in _referents_from_memory(facts, anchors):
+            if extra not in named:
+                named.append(extra)
+            if len(named) >= MAX_REFERENTS:
+                break
     if not named:
         return ResolvedQuestion(text=text, substituted=[])
 

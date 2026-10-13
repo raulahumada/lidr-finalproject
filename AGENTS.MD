@@ -181,7 +181,7 @@ Pasá `session_id` opcional en `POST /answer/agentic` y `/answer/agentic/start`.
 |----------|--------|
 | Transcript / `session_id` | Historial durable en Postgres (UI + F5) |
 | Checkpointer / `thread_id` | Estado pausado de **un** run LangGraph |
-| Conversation memory | Con `session_id`, resuelve follow-ups **antes del retrieve** y mete una ventana de turnos en el prompt (no es evidencia citable). Settings: `CONVERSATION_MAX_TURNS` (default 4), `CONVERSATION_MEMORY_MAX_TOKENS` (default 1024) |
+| Conversation memory | Con `session_id`: (1) ventana de turnos, (2) **facts** (dominio / entidades / docs citados, sin LLM extract), (3) **anchors** (frases de alcance ES → dominio). Un turno *solo-ancla* confirma y no hace RAG. Resolve + `render_memory` los usan; request `domain` gana sobre anchor. Settings: `CONVERSATION_MAX_TURNS` (default 4), `CONVERSATION_MEMORY_MAX_TOKENS` (default 1024). Bag en `conversation_sessions.memory` (JSONB) |
 
 `POST /answer` (sync, un tiro) **rechaza** `session_id` con HTTP **422** — no tiene framing de memoria; usá agentic + session.
 
@@ -254,7 +254,7 @@ Scripts: `dev`, `build`, `start`, `lint`.
 ## Estado actual / gaps
 
 - Sin package/workspace root; cada carpeta se instala y corre por separado.
-- RAG: Alembic + `POST /api/v1/search` + ingest + `POST /answer` + `POST /answer/agentic` (+ `/start` + `/progress` + chat sessions + conversation memory); Postgres checkpointer + activity log in-process; follow-up: orchestrator / facts+anchors.
+- RAG: Alembic + `POST /api/v1/search` + ingest + `POST /answer` + `POST /answer/agentic` (+ `/start` + `/progress` + chat sessions + conversation memory con facts/anchors); Postgres checkpointer + activity log in-process; follow-up: orchestrator.
 - Items CRUD sigue en memoria.
 - Front chat agentic multi-sesión en `/answer` (Astryx); sin package de tipos compartidos monorepo.
 
