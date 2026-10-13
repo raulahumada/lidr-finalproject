@@ -161,7 +161,7 @@ curl -s http://localhost:8000/api/v1/answer \
 
 Si confianza < `AGENTIC_CONFIDENCE_THRESHOLD` (default `0.55`), sin evidencia, o citas inválidas → **202** + `thread_id`; luego resume.
 
-**Live progress (consola):** `POST /answer/agentic/start` agenda en background (HTTP 202 + `thread_id`) y `GET /answer/agentic/{thread_id}/progress` narra nodos (incluye hub) mientras `running`. El **activity log** sigue **in-process** (se pierde al reload; un thread pausado igual se puede `resume` si el checkpointer es Postgres). Body de start/sync acepta `domain` opcional (omit / `auto` = detección; valor inválido → **422**).
+**Live progress (consola):** `POST /answer/agentic/start` agenda en background (HTTP 202 + `thread_id`) y `GET /answer/agentic/{thread_id}/progress` narra nodos (incluye hub) mientras `running`. El **activity log** sigue **in-process** (se pierde al reload; un thread pausado igual se puede `resume` si el checkpointer es Postgres). Body de start/sync acepta `domain` opcional (omit / `auto` = detección; valor inválido → **422**). Respuestas agentic (sync / progress / resume) incluyen `custom_notes: [{key, note}, …]` cuando corrió un especialista custom (`prompt_specialist`); lista vacía si no.
 
 **Sesiones de chat (`session_id` ≠ `thread_id`):** una sesión agrupa muchos runs agentic; el transcript vive en Postgres (`conversation_sessions`, Alembic).
 

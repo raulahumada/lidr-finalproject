@@ -113,9 +113,13 @@ def test_review_reasons_on_low_confidence(monkeypatch) -> None:
     assert "0.40" in reasons[0]
 
 
-def test_runner_completes_with_evidence() -> None:
+def test_runner_completes_with_evidence(monkeypatch) -> None:
     reset_checkpointer()
     get_settings.cache_clear()
+    monkeypatch.setattr(
+        "app.domain.graph.orchestrator._enabled_custom_keys",
+        lambda: [],
+    )
     retriever = FakeRetriever([_hit()])
     chat = FakeChat()
     runner = AgenticAnswerRunner(
@@ -129,6 +133,7 @@ def test_runner_completes_with_evidence() -> None:
     assert retriever.calls == 1
     assert result.domain == "tenela"
     assert result.routing_history
+    assert result.custom_notes == []
     nodes = [s.node for s in result.agent_trace]
     assert "orchestrator" in nodes
     for required in (

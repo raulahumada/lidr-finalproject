@@ -139,6 +139,7 @@ def answer_agentic_progress(
             thread_id=thread_id,
             activity=activity,
             question=run.question,
+            custom_notes=list(run.custom_notes or []),
             error=run.error,
         )
 
@@ -171,6 +172,7 @@ def answer_agentic_progress(
         citations=citations,
         agent_trace=result.get("agent_trace") or [],
         routing_history=result.get("routing_history") or [],
+        custom_notes=result.get("custom_notes") or list(run.custom_notes or []),
         review_reasons=list(result.get("review_reasons") or []),
         confidence=result.get("confidence"),
         no_evidence=bool(result.get("no_evidence")),

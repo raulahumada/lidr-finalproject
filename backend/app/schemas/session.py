@@ -25,11 +25,17 @@ class HistoryTurnCitation(BaseModel):
     excerpt: str = ""
 
 
+class HistoryTurnNote(BaseModel):
+    key: str
+    note: str
+
+
 class HistoryTurn(BaseModel):
     question: str
     resolved_question: str | None = None
     answer: str | None = None
     citations: list[HistoryTurnCitation] = Field(default_factory=list)
+    custom_notes: list[HistoryTurnNote] = Field(default_factory=list)
     status: Literal["completed", "rejected"] = "completed"
     thread_id: str | None = None
     created_at: str | datetime

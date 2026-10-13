@@ -34,6 +34,11 @@ class AgentTraceStep(BaseModel):
     summary: str
 
 
+class CustomAgentNote(BaseModel):
+    key: str
+    note: str
+
+
 class AgenticAnswerResponse(BaseModel):
     status: Literal[
         "completed",
@@ -48,6 +53,7 @@ class AgenticAnswerResponse(BaseModel):
     citations: list[Citation] = Field(default_factory=list)
     agent_trace: list[AgentTraceStep] = Field(default_factory=list)
     routing_history: list[RoutingHistoryEntry] = Field(default_factory=list)
+    custom_notes: list[CustomAgentNote] = Field(default_factory=list)
     review_reasons: list[str] = Field(default_factory=list)
     confidence: float | None = None
     no_evidence: bool = False
@@ -85,6 +91,7 @@ class AgenticProgressResponse(BaseModel):
     citations: list[Citation] = Field(default_factory=list)
     agent_trace: list[AgentTraceStep] = Field(default_factory=list)
     routing_history: list[RoutingHistoryEntry] = Field(default_factory=list)
+    custom_notes: list[CustomAgentNote] = Field(default_factory=list)
     review_reasons: list[str] = Field(default_factory=list)
     confidence: float | None = None
     no_evidence: bool = False

@@ -22,6 +22,7 @@ from app.generation.rag.retriever import SemanticRetriever
 from app.schemas.agentic_answer import (
     AgenticAnswerResponse,
     AgentTraceStep,
+    CustomAgentNote,
     RoutingHistoryEntry,
 )
 from app.schemas.answer import Citation
@@ -121,6 +122,7 @@ class AgenticAnswerRunner:
                 status=response.status,
                 thread_id=response.thread_id,
                 resolved_question=response.resolved_question,
+                custom_notes=[n.model_dump() for n in response.custom_notes],
             )
         except SessionNotFoundError:
             log.warning(
@@ -215,6 +217,10 @@ class AgenticAnswerRunner:
                 if not isinstance(update, dict):
                     continue
                 for node_name, node_update in update.items():
+                    if isinstance(node_update, dict):
+                        self.activity_log.extend_custom_notes(
+                            thread_id, node_update.get("custom_notes")
+                        )
                     for entry in describe_node(node_name, node_update):
                         self.activity_log.append(
                             thread_id,
@@ -338,6 +344,7 @@ class AgenticAnswerRunner:
                 citations=self._citations(result.get("citations") or []),
                 agent_trace=self._trace(result.get("agent_trace") or []),
                 routing_history=self._routing(result.get("routing_history") or []),
+                custom_notes=self._custom_notes(result.get("custom_notes") or []),
                 review_reasons=reasons,
                 confidence=result.get("confidence"),
                 no_evidence=bool(result.get("no_evidence")),
@@ -360,6 +367,7 @@ class AgenticAnswerRunner:
             citations=self._citations(result.get("citations") or []),
             agent_trace=self._trace(result.get("agent_trace") or []),
             routing_history=self._routing(result.get("routing_history") or []),
+            custom_notes=self._custom_notes(result.get("custom_notes") or []),
             review_reasons=list(result.get("review_reasons") or []),
             confidence=result.get("confidence"),
             no_evidence=bool(result.get("no_evidence")),
@@ -405,6 +413,16 @@ class AgenticAnswerRunner:
         for item in raw:
             try:
                 out.append(RoutingHistoryEntry.model_validate(item))
+            except Exception:  # noqa: BLE001
+                continue
+        return out
+
+    @staticmethod
+    def _custom_notes(raw: list[dict[str, Any]]) -> list[CustomAgentNote]:
+        out: list[CustomAgentNote] = []
+        for item in raw:
+            try:
+                out.append(CustomAgentNote.model_validate(item))
             except Exception:  # noqa: BLE001
                 continue
         return out
