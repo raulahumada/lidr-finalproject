@@ -44,9 +44,9 @@ Chat UI (`/answer`) calls FastAPI at `NEXT_PUBLIC_API_BASE_URL` (default `http:/
 
 ## Home (`/`)
 
-Entrada de producto Metropol (Astryx): título + copy corto + CTAs a **Chat** (`/answer`), **Agentes** (`/agents`) y **Búsqueda** (`/search`). Sin boilerplate de create-next-app.
+Entrada de producto Metropol (Astryx): título + copy corto + CTAs a **Chat** (`/answer`), **Agentes** (`/agents`), **Búsqueda** (`/search`) e **Ingesta** (`/ingest`). Sin boilerplate de create-next-app.
 
-Smoke: abrir `/` → “Abrir chat” llega a `/answer`; “Agentes” y “Búsqueda” a sus rutas.
+Smoke: abrir `/` → “Abrir chat” llega a `/answer`; “Agentes”, “Búsqueda” e “Ingesta” a sus rutas.
 
 ## Agentic answer chat (`/answer`)
 
@@ -93,6 +93,22 @@ SideNav → **Búsqueda**. Consola de retrieve semántico sobre `POST /api/v1/se
 - Cliente: `lib/api/search.ts`.
 
 Smoke: backend up + corpus ingerido → `/search` → “handoff cobranzas” → ver hits con score/path; probar `?q=tenela`; apagar API key → 503 visible en banner.
+
+### Ingest console (`/ingest`)
+
+SideNav → **Ingesta**. Lanza el mismo pipeline que `python -m app.ingestion.run_ingest` vía HTTP:
+
+| Action | Endpoint |
+|--------|----------|
+| Stats | `GET {API}/api/v1/ingest/stats` |
+| Start | `POST {API}/api/v1/ingest/runs` `{ force }` → 202 + `run_id` |
+| Poll (~1.2s) | `GET {API}/api/v1/ingest/runs/{run_id}` |
+
+- Switch **Force**, botón Ingerir, resumen (seen/ingested/chunks/skips/errors), CTA a `/search`.
+- 503 (config) y 409 (busy) en banner. Jobs in-process (se pierden al reload del API).
+- Cliente: `lib/api/ingest.ts` (`runIngestWithProgress`).
+
+Smoke: backend up + `CORPUS_ROOT` + key → `/ingest` → ver docs/chunks → Ingerir (sin force si ya indexado) → summary → “Ir a búsqueda”.
 
 ### Checkpointer / activity caveat
 

@@ -17,6 +17,7 @@ import { StatusDot } from "@astryxdesign/core/StatusDot";
 import { VStack } from "@astryxdesign/core/Layout";
 import {
   Box,
+  Database,
   Folder,
   Home,
   MessageSquare,
@@ -207,6 +208,12 @@ export function AppShellLayout({ children }: { children: React.ReactNode }) {
               icon={Search}
               href="/search"
               isSelected={pathname.startsWith("/search")}
+            />
+            <SideNavItem
+              label="Ingesta"
+              icon={Database}
+              href="/ingest"
+              isSelected={pathname.startsWith("/ingest")}
             />
           </SideNavSection>
 
