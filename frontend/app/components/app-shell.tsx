@@ -22,6 +22,7 @@ import {
   MessageSquare,
   Network,
   Plus,
+  Search,
   Settings,
 } from "lucide-react";
 
@@ -200,6 +201,12 @@ export function AppShellLayout({ children }: { children: React.ReactNode }) {
               icon={Network}
               href="/agents"
               isSelected={pathname.startsWith("/agents")}
+            />
+            <SideNavItem
+              label="Búsqueda"
+              icon={Search}
+              href="/search"
+              isSelected={pathname.startsWith("/search")}
             />
           </SideNavSection>
 
