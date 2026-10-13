@@ -44,23 +44,30 @@ Chat UI (`/answer`) calls FastAPI at `NEXT_PUBLIC_API_BASE_URL` (default `http:/
 
 ## Agentic answer chat (`/answer`)
 
-Primary path is **agentic live progress** + **multi-sesión** (Astryx `ai-chat` frame: session list, suggestions, live agent steps, Markdown, evidence, human gate):
+Primary path is **agentic live progress** + **multi-sesión** + **orquestador star** (Astryx `ai-chat` frame: session list, domain override, suggestions, live agent steps, routing, Markdown, evidence, human gate):
 
 | Action | Endpoint |
 |--------|----------|
 | Sessions | `POST/GET/PATCH/DELETE {API}/api/v1/answer/session*` · `GET …/sessions` |
-| Start | `POST {API}/api/v1/answer/agentic/start` (+ optional `session_id`) → 202 + `thread_id` |
+| Start | `POST {API}/api/v1/answer/agentic/start` (+ optional `session_id`, optional `domain`) → 202 + `thread_id` |
 | Progress poll (~1.2s) | `GET {API}/api/v1/answer/agentic/{thread_id}/progress` |
 | Resume (approve / reject / adjust) | `POST {API}/api/v1/answer/agentic/{thread_id}/resume` |
+| Agents catalog | `GET {API}/api/v1/answer/agents` → UI `/agents` |
 
 - **`session_id` ≠ `thread_id`:** sesión = conversación durable (transcript); thread = un run del grafo.
+- **Domain tag** (Selector en el composer): `auto` no manda `domain`; `ventas|cobranzas|operacion|tenela|general` se envía en el start. El chip muestra el dominio efectivo del progress/respuesta.
+- **Ruteo:** la UI lista `routing_history` (especialista elegido + razón) junto al activity del hub/especialistas.
 - Sesiones en el **SideNav del AppShell** (sección Conversaciones), no un segundo sidebar.
 - Podés cambiar de sesión mientras corre un run: **no se cancela**; el poll sigue y al volver ves el resultado / history.
 - Deep link: `/answer?session=<id>` restaura el history desde el backend.
 - The UI does **not** ask for `k`; the backend default applies.
-- Hot path: `runAgenticWithProgress` in `lib/api/agentic.ts` (start + poll with `session_id`). Clients in `lib/api/sessions.ts`.
-- While `status=running`, the chat shows `ChatToolCalls` for Metropol nodes (pending/running/complete).
+- Hot path: `runAgenticWithProgress` in `lib/api/agentic.ts` (start + poll with `session_id` / `domain`). Clients in `lib/api/sessions.ts` y `lib/api/agents.ts`.
+- While `status=running`, the chat shows `ChatToolCalls` for Metropol nodes (incluye `orchestrator`).
 - Terminal `awaiting_human_review` is a pause, not an error. Resume is a direct POST (no poll); al cerrar el turno se appendea al transcript de la sesión.
+
+### Agents console (`/agents`)
+
+SideNav → **Agentes**. Carga el catálogo (`roles`, escalera, domains, knobs `agentic_orchestrator_max_steps` + `agentic_confidence_threshold`). Smoke: abrir `/agents` con backend up y ver la lista de roles.
 
 ### Checkpointer / activity caveat
 

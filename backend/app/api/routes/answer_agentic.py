@@ -55,7 +55,13 @@ def answer_agentic(
             question=request.question,
             k=request.k,
             session_id=request.session_id,
+            domain=request.domain,
         )
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=str(exc),
+        ) from exc
     except Exception as exc:  # noqa: BLE001
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -87,7 +93,13 @@ def answer_agentic_start(
             question=request.question,
             k=request.k,
             session_id=request.session_id,
+            domain=request.domain,
         )
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=str(exc),
+        ) from exc
     except Exception as exc:  # noqa: BLE001
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -154,9 +166,11 @@ def answer_agentic_progress(
         thread_id=thread_id,
         activity=activity,
         question=result.get("question") or run.question,
+        domain=result.get("domain"),
         answer=result.get("answer"),
         citations=citations,
         agent_trace=result.get("agent_trace") or [],
+        routing_history=result.get("routing_history") or [],
         review_reasons=list(result.get("review_reasons") or []),
         confidence=result.get("confidence"),
         no_evidence=bool(result.get("no_evidence")),

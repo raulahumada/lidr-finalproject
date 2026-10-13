@@ -6,10 +6,26 @@ import {
   type Citation,
 } from "./answer";
 
+export type MetropolDomain =
+  | "ventas"
+  | "cobranzas"
+  | "operacion"
+  | "tenela"
+  | "general";
+
 export type AgenticAnswerRequest = {
   question: string;
   k?: number;
   session_id?: string;
+  /** Omit or leave unset for auto-detect; never send `"auto"`. */
+  domain?: MetropolDomain;
+};
+
+export type RoutingHistoryEntry = {
+  step: number;
+  next_agent: string;
+  reason: string;
+  source: string;
 };
 
 export type AgenticResumeRequest = {
@@ -34,9 +50,11 @@ export type AgenticAnswerResponse = {
   status: "completed" | "awaiting_human_review" | "rejected";
   thread_id: string;
   question: string;
+  domain: string | null;
   answer: string | null;
   citations: Citation[];
   agent_trace: AgentTraceStep[];
+  routing_history: RoutingHistoryEntry[];
   review_reasons: string[];
   confidence: number | null;
   no_evidence: boolean;
@@ -61,9 +79,11 @@ export type AgenticProgressResponse = {
   thread_id: string;
   activity: GraphActivityEntry[];
   question: string | null;
+  domain: string | null;
   answer: string | null;
   citations: Citation[];
   agent_trace: AgentTraceStep[];
+  routing_history: RoutingHistoryEntry[];
   review_reasons: string[];
   confidence: number | null;
   no_evidence: boolean;
@@ -204,9 +224,11 @@ function progressToAnswer(
     status,
     thread_id: progress.thread_id,
     question: progress.question || "",
+    domain: progress.domain,
     answer: progress.answer,
     citations: progress.citations || [],
     agent_trace: progress.agent_trace || [],
+    routing_history: progress.routing_history || [],
     review_reasons: progress.review_reasons || [],
     confidence: progress.confidence,
     no_evidence: progress.no_evidence,

@@ -18,6 +18,7 @@ from typing import Any, Literal
 RunStatus = Literal["running", "completed", "awaiting_human_review", "failed"]
 
 _LABELS: dict[str, str] = {
+    "orchestrator": "Orquestador",
     "intent_framer": "Encuadre de intención",
     "corpus_fetcher": "Recuperación de evidencia",
     "grounded_composer": "Síntesis grounded",
@@ -99,6 +100,17 @@ def _describe(node_name: str, update: Any) -> list[dict[str, str]]:
         summary = str(last.get("summary") or "").strip()
         if summary:
             return [{"node": node_name, "label": label, "message": summary}]
+
+    if node_name == "orchestrator":
+        next_agent = update.get("next_agent") or ""
+        reason = str(update.get("route_reason") or "").strip()
+        if next_agent and reason:
+            message = f"elige {next_agent}: {reason}"
+        elif next_agent:
+            message = f"elige {next_agent}"
+        else:
+            message = "decisión de ruteo"
+        return [{"node": node_name, "label": label, "message": message}]
 
     if node_name == "intent_framer":
         framed = update.get("framed_query") or ""

@@ -14,6 +14,7 @@ from app.domain.answer_service import build_knowledge_pack
 from app.domain.graph.activity import GraphActivityLog, describe_node
 from app.domain.graph.build import build_agentic_answer_graph
 from app.domain.graph.checkpointer import get_checkpointer
+from app.domain.graph.domain_tag import detect_domain, parse_domain
 from app.domain.graph.state import AgenticAnswerState
 from app.foundation.llm.chat import ChatClient
 from app.generation.conversation.store import SessionNotFoundError, SessionStore
@@ -21,6 +22,7 @@ from app.generation.rag.retriever import SemanticRetriever
 from app.schemas.agentic_answer import (
     AgenticAnswerResponse,
     AgentTraceStep,
+    RoutingHistoryEntry,
 )
 from app.schemas.answer import Citation
 
@@ -80,14 +82,21 @@ class AgenticAnswerRunner:
         question: str,
         resolved_k: int,
         session_id: str | None,
+        domain: str | None = None,
     ) -> AgenticAnswerState:
+        window = self._conversation_window(session_id)
+        override = parse_domain(domain)
+        resolved_domain = override or detect_domain(question, window=window)
         initial: AgenticAnswerState = {
             "question": question,
             "k": resolved_k,
+            "domain": resolved_domain,
             "agent_trace": [],
+            "routing_history": [],
             "review_reasons": [],
+            "supervisor_steps": 0,
             "prompt_version": self.settings.answer_prompt_version,
-            "conversation_window": self._conversation_window(session_id),
+            "conversation_window": window,
         }
         if session_id:
             initial["session_id"] = session_id
@@ -132,6 +141,7 @@ class AgenticAnswerRunner:
         question: str,
         k: int | None = None,
         session_id: str | None = None,
+        domain: str | None = None,
     ) -> AgenticAnswerResponse:
         thread_id = uuid.uuid4().hex
         settings = self.settings
@@ -140,6 +150,7 @@ class AgenticAnswerRunner:
             question=question,
             resolved_k=resolved_k,
             session_id=session_id,
+            domain=domain,
         )
         result = self._graph.invoke(initial, self._config(thread_id))
         response = self._to_response(thread_id, result, resolved_k=resolved_k)
@@ -155,6 +166,7 @@ class AgenticAnswerRunner:
         question: str,
         k: int | None = None,
         session_id: str | None = None,
+        domain: str | None = None,
     ) -> str:
         """Schedule a streamed graph run; return thread_id immediately."""
         thread_id = uuid.uuid4().hex
@@ -168,6 +180,7 @@ class AgenticAnswerRunner:
                     question=question,
                     resolved_k=resolved_k,
                     session_id=session_id,
+                    domain=domain,
                 )
             finally:
                 _BACKGROUND_THREADS.discard(worker)
@@ -188,12 +201,14 @@ class AgenticAnswerRunner:
         question: str,
         resolved_k: int,
         session_id: str | None = None,
+        domain: str | None = None,
     ) -> None:
         cfg = self._config(thread_id)
         initial = self._initial_state(
             question=question,
             resolved_k=resolved_k,
             session_id=session_id,
+            domain=domain,
         )
         try:
             for update in self._graph.stream(initial, cfg, stream_mode="updates"):
@@ -318,9 +333,11 @@ class AgenticAnswerRunner:
                 thread_id=thread_id,
                 question=str(result.get("question") or ""),
                 resolved_question=self._optional_resolved(result),
+                domain=result.get("domain"),
                 answer=result.get("answer"),
                 citations=self._citations(result.get("citations") or []),
                 agent_trace=self._trace(result.get("agent_trace") or []),
+                routing_history=self._routing(result.get("routing_history") or []),
                 review_reasons=reasons,
                 confidence=result.get("confidence"),
                 no_evidence=bool(result.get("no_evidence")),
@@ -338,9 +355,11 @@ class AgenticAnswerRunner:
             thread_id=thread_id,
             question=str(result.get("question") or ""),
             resolved_question=self._optional_resolved(result),
+            domain=result.get("domain"),
             answer=result.get("answer"),
             citations=self._citations(result.get("citations") or []),
             agent_trace=self._trace(result.get("agent_trace") or []),
+            routing_history=self._routing(result.get("routing_history") or []),
             review_reasons=list(result.get("review_reasons") or []),
             confidence=result.get("confidence"),
             no_evidence=bool(result.get("no_evidence")),
@@ -379,3 +398,13 @@ class AgenticAnswerRunner:
             if node:
                 steps.append(AgentTraceStep(node=node, summary=summary))
         return steps
+
+    @staticmethod
+    def _routing(raw: list[dict[str, Any]]) -> list[RoutingHistoryEntry]:
+        out: list[RoutingHistoryEntry] = []
+        for item in raw:
+            try:
+                out.append(RoutingHistoryEntry.model_validate(item))
+            except Exception:  # noqa: BLE001
+                continue
+        return out

@@ -5,10 +5,22 @@ from pydantic import BaseModel, Field
 from app.schemas.answer import Citation
 
 
+class RoutingHistoryEntry(BaseModel):
+    step: int
+    next_agent: str
+    reason: str = ""
+    source: str = ""
+
+
 class AgenticAnswerRequest(BaseModel):
     question: str = Field(..., min_length=1, max_length=4000)
     k: int | None = Field(default=None, ge=1, le=50)
     session_id: str | None = Field(default=None, min_length=1, max_length=64)
+    domain: str | None = Field(
+        default=None,
+        description="Metropol domain override, or omit/auto for detection.",
+        max_length=32,
+    )
 
 
 class AgenticResumeRequest(BaseModel):
@@ -31,9 +43,11 @@ class AgenticAnswerResponse(BaseModel):
     thread_id: str
     question: str
     resolved_question: str | None = None
+    domain: str | None = None
     answer: str | None = None
     citations: list[Citation] = Field(default_factory=list)
     agent_trace: list[AgentTraceStep] = Field(default_factory=list)
+    routing_history: list[RoutingHistoryEntry] = Field(default_factory=list)
     review_reasons: list[str] = Field(default_factory=list)
     confidence: float | None = None
     no_evidence: bool = False
@@ -66,9 +80,11 @@ class AgenticProgressResponse(BaseModel):
     thread_id: str
     activity: list[GraphActivityEntry] = Field(default_factory=list)
     question: str | None = None
+    domain: str | None = None
     answer: str | None = None
     citations: list[Citation] = Field(default_factory=list)
     agent_trace: list[AgentTraceStep] = Field(default_factory=list)
+    routing_history: list[RoutingHistoryEntry] = Field(default_factory=list)
     review_reasons: list[str] = Field(default_factory=list)
     confidence: float | None = None
     no_evidence: bool = False

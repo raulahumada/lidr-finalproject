@@ -127,13 +127,24 @@ def test_runner_completes_with_evidence() -> None:
     assert result.answer
     assert chat.calls == 1
     assert retriever.calls == 1
+    assert result.domain == "tenela"
+    assert result.routing_history
     nodes = [s.node for s in result.agent_trace]
-    assert nodes == [
+    assert "orchestrator" in nodes
+    for required in (
         "intent_framer",
         "corpus_fetcher",
         "grounded_composer",
         "source_guard",
         "escalation_gate",
+    ):
+        assert required in nodes
+    assert [r.next_agent for r in result.routing_history] == [
+        "intent_framer",
+        "corpus_fetcher",
+        "grounded_composer",
+        "source_guard",
+        "finish",
     ]
 
 

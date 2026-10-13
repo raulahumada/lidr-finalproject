@@ -8,6 +8,15 @@ def test_describe_known_metropol_nodes() -> None:
     assert intent["node"] == "intent_framer"
     assert "Encuadre" in intent["label"]
 
+    [hub] = describe_node(
+        "orchestrator",
+        {"next_agent": "corpus_fetcher", "route_reason": "siguiente en escalera"},
+    )
+    assert hub["node"] == "orchestrator"
+    assert "Orquestador" in hub["label"]
+    assert "corpus_fetcher" in hub["message"]
+    assert "escalera" in hub["message"]
+
     [corpus] = describe_node(
         "corpus_fetcher",
         {"hits": [{"chunk_id": 1}, {"chunk_id": 2}], "no_evidence": False},

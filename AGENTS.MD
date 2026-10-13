@@ -146,13 +146,22 @@ curl -s http://localhost:8000/api/v1/answer \
 
 ### Answer agentic (LangGraph)
 
-Pipeline fijo Metropol: `intent_framer` → `corpus_fetcher` → `grounded_composer` → `source_guard` → `escalation_gate`. Reusa retrieve/prompts v2 del path sync; **sin** Response CAG en el hot path.
+**Topología star (orquestador):** el hub `orchestrator` elige el siguiente especialista con una **escalera determinista** (`intent_framer` → `corpus_fetcher` → `grounded_composer` → `source_guard`) y vuelve al hub tras cada especialista; al cerrar el ladder va a `escalation_gate`. Reusa retrieve/prompts v2 del path sync; **sin** Response CAG en el hot path.
+
+**Orquestador ≠ domain tag ≠ “agentes de negocio”:**
+| Concepto | Qué es |
+|----------|--------|
+| Pipeline / nodos | Especialistas LangGraph (roles del grafo) |
+| Orquestador | Hub que rutea entre esos nodos (`routing_history`, tope `AGENTIC_ORCHESTRATOR_MAX_STEPS`, default `10`) |
+| Domain tag | Etiqueta Metropol `ventas\|cobranzas\|operacion\|tenela\|general` (auto-detect o override en el request); **no** es un agente aparte |
+
+**Catálogo (consola):** `GET /api/v1/answer/agents` → roles + ladder + domains + knobs (`agentic_orchestrator_max_steps`, `agentic_confidence_threshold`). UI: `/agents`.
 
 **Checkpointer:** por defecto **Postgres** (`AGENTIC_CHECKPOINTER=auto` + `DATABASE_URL`) — pause/resume sobrevive reinicios de Uvicorn (tablas LangGraph vía `setup()` al boot; no Alembic). `AGENTIC_CHECKPOINTER=memory` fuerza `MemorySaver` in-process (tests / offline).
 
 Si confianza < `AGENTIC_CONFIDENCE_THRESHOLD` (default `0.55`), sin evidencia, o citas inválidas → **202** + `thread_id`; luego resume.
 
-**Live progress (consola):** `POST /answer/agentic/start` agenda en background (HTTP 202 + `thread_id`) y `GET /answer/agentic/{thread_id}/progress` narra nodos mientras `running`. El **activity log** sigue **in-process** (se pierde al reload; un thread pausado igual se puede `resume` si el checkpointer es Postgres).
+**Live progress (consola):** `POST /answer/agentic/start` agenda en background (HTTP 202 + `thread_id`) y `GET /answer/agentic/{thread_id}/progress` narra nodos (incluye hub) mientras `running`. El **activity log** sigue **in-process** (se pierde al reload; un thread pausado igual se puede `resume` si el checkpointer es Postgres). Body de start/sync acepta `domain` opcional (omit / `auto` = detección; valor inválido → **422**).
 
 **Sesiones de chat (`session_id` ≠ `thread_id`):** una sesión agrupa muchos runs agentic; el transcript vive en Postgres (`conversation_sessions`, Alembic).
 

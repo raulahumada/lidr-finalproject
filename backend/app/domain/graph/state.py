@@ -10,6 +10,7 @@ class AgenticAnswerState(TypedDict, total=False):
     question: str
     k: int
     session_id: str
+    domain: str
     conversation_window: list[dict[str, Any]]
     framed_query: str
     resolved_question: str
@@ -25,4 +26,8 @@ class AgenticAnswerState(TypedDict, total=False):
     status: str
     human_decision: dict[str, Any]
     prompt_version: str
+    next_agent: str
+    route_reason: str
+    supervisor_steps: int
+    routing_history: Annotated[list[dict[str, Any]], operator.add]
     agent_trace: Annotated[list[dict[str, Any]], operator.add]
