@@ -1,6 +1,14 @@
 "use client";
 
-import { useEffect, useRef, useState, useTransition } from "react";
+import {
+  Suspense,
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  useTransition,
+} from "react";
+import { useSearchParams } from "next/navigation";
 
 import { Avatar } from "@astryxdesign/core/Avatar";
 import { Banner } from "@astryxdesign/core/Banner";
@@ -33,6 +41,8 @@ import {
   type AgenticAnswerResponse,
   type GraphActivityEntry,
 } from "../lib/api/agentic";
+import { readAnswerSession, type HistoryTurn } from "../lib/api/sessions";
+import { useChatSessions } from "../lib/chat-sessions-context";
 
 const SUGGESTIONS = [
   "¿Cómo es el handoff de cobranzas con Tenela?",
@@ -40,7 +50,6 @@ const SUGGESTIONS = [
   "¿Cómo se gestiona el proceso de ventas?",
 ];
 
-/** Fixed Metropol pipeline order for live step UI. */
 const PIPELINE_NODES = [
   { node: "intent_framer", label: "Encuadre de intención" },
   { node: "corpus_fetcher", label: "Recuperación de evidencia" },
@@ -64,6 +73,14 @@ type UiState =
       kind: AnswerApiError["kind"];
       httpStatus: number | null;
     };
+
+type StashedSessionUi = {
+  ui: UiState;
+  activity: GraphActivityEntry[];
+  adjustText: string;
+  reviewNote: string;
+  adjustError: string | null;
+};
 
 function mapAgenticUi(
   question: string,
@@ -123,7 +140,21 @@ function buildTraceCalls(data: AgenticAnswerResponse) {
   }));
 }
 
-export default function AnswerPage() {
+function AnswerPageInner() {
+  const searchParams = useSearchParams();
+  const sessionFromUrl = searchParams.get("session");
+  const {
+    refreshSessions,
+    markBusy,
+    busySessionIds,
+    createSessionAndOpen,
+    openSession,
+  } = useChatSessions();
+
+  const [activeSessionId, setActiveSessionId] = useState<string | null>(null);
+  const [historyTurns, setHistoryTurns] = useState<HistoryTurn[]>([]);
+  const [sessionBootError, setSessionBootError] = useState<string | null>(null);
+
   const [draft, setDraft] = useState("");
   const [adjustText, setAdjustText] = useState("");
   const [reviewNote, setReviewNote] = useState("");
@@ -131,15 +162,112 @@ export default function AnswerPage() {
   const [activity, setActivity] = useState<GraphActivityEntry[]>([]);
   const [ui, setUi] = useState<UiState>({ status: "idle" });
   const [isPending, startTransition] = useTransition();
-  const abortRef = useRef<AbortController | null>(null);
+
+  const activeSessionIdRef = useRef<string | null>(null);
+  const stashRef = useRef<Record<string, StashedSessionUi>>({});
+  const controllersRef = useRef<Map<string, AbortController>>(new Map());
+
+  useEffect(() => {
+    activeSessionIdRef.current = activeSessionId;
+  }, [activeSessionId]);
 
   useEffect(() => {
     return () => {
-      abortRef.current?.abort();
+      for (const controller of controllersRef.current.values()) {
+        controller.abort();
+      }
+      controllersRef.current.clear();
     };
   }, []);
 
-  const isLoading = ui.status === "loading" || isPending;
+  const stashActiveUi = useCallback(() => {
+    if (!activeSessionIdRef.current) return;
+    stashRef.current[activeSessionIdRef.current] = {
+      ui,
+      activity,
+      adjustText,
+      reviewNote,
+      adjustError,
+    };
+  }, [ui, activity, adjustText, reviewNote, adjustError]);
+
+  const applyStashOrIdle = useCallback((sessionId: string) => {
+    const cached = stashRef.current[sessionId];
+    if (!cached) {
+      setUi({ status: "idle" });
+      setActivity([]);
+      setAdjustText("");
+      setReviewNote("");
+      setAdjustError(null);
+      return;
+    }
+    setUi(cached.ui);
+    setActivity(cached.activity);
+    setAdjustText(cached.adjustText);
+    setReviewNote(cached.reviewNote);
+    setAdjustError(cached.adjustError);
+  }, []);
+
+  const loadSessionView = useCallback(async (sessionId: string) => {
+    const view = await readAnswerSession(sessionId);
+    setActiveSessionId(view.session_id);
+    setHistoryTurns(view.history);
+    setSessionBootError(null);
+    return view;
+  }, []);
+
+  /** Boot / react to sidebar navigation (?session=). Never aborts in-flight runs. */
+  useEffect(() => {
+    let cancelled = false;
+    void (async () => {
+      try {
+        if (sessionFromUrl) {
+          if (sessionFromUrl === activeSessionIdRef.current) return;
+          stashActiveUi();
+          await loadSessionView(sessionFromUrl);
+          if (cancelled) return;
+          const cached = stashRef.current[sessionFromUrl];
+          const stillBusy = busySessionIds.has(sessionFromUrl);
+          if (
+            cached &&
+            (cached.ui.status === "awaiting_review" ||
+              (cached.ui.status === "loading" && stillBusy))
+          ) {
+            applyStashOrIdle(sessionFromUrl);
+          } else {
+            delete stashRef.current[sessionFromUrl];
+            setUi({ status: "idle" });
+            setActivity([]);
+            setAdjustText("");
+            setReviewNote("");
+            setAdjustError(null);
+          }
+          return;
+        }
+
+        const list = await refreshSessions();
+        if (cancelled) return;
+        if (list.length === 0) {
+          await createSessionAndOpen();
+          return;
+        }
+        openSession(list[0].session_id);
+      } catch (err) {
+        if (cancelled) return;
+        setSessionBootError(
+          err instanceof AnswerApiError
+            ? err.message
+            : "No se pudo cargar la sesión.",
+        );
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- only when URL session changes
+  }, [sessionFromUrl]);
+
+  const isCurrentBusy = ui.status === "loading" || isPending;
   const reviewData = ui.status === "awaiting_review" ? ui.data : null;
 
   const applyError = (err: unknown, question?: string) => {
@@ -162,13 +290,14 @@ export default function AnswerPage() {
     });
   };
 
+  const ensureSessionId = async (): Promise<string> => {
+    if (activeSessionId) return activeSessionId;
+    return createSessionAndOpen();
+  };
+
   const submitQuestion = (value: string) => {
     const question = value.trim();
-    if (!question || isLoading) return;
-
-    abortRef.current?.abort();
-    const controller = new AbortController();
-    abortRef.current = controller;
+    if (!question || isCurrentBusy) return;
 
     setDraft("");
     setAdjustText("");
@@ -176,31 +305,79 @@ export default function AnswerPage() {
     setAdjustError(null);
     setActivity([]);
     setUi({ status: "loading", question });
+
     void (async () => {
+      let sessionId = "";
       try {
+        sessionId = await ensureSessionId();
+        const previous = controllersRef.current.get(sessionId);
+        previous?.abort();
+        const controller = new AbortController();
+        controllersRef.current.set(sessionId, controller);
+
+        markBusy(sessionId, true);
         const data = await runAgenticWithProgress(
-          { question },
+          { question, session_id: sessionId },
           {
             signal: controller.signal,
             onProgress: (progress) => {
-              setActivity(progress.activity);
+              if (activeSessionIdRef.current === sessionId) {
+                setActivity(progress.activity);
+              } else {
+                const stash = stashRef.current[sessionId];
+                if (stash && stash.ui.status === "loading") {
+                  stashRef.current[sessionId] = {
+                    ...stash,
+                    activity: progress.activity,
+                  };
+                }
+              }
             },
           },
         );
-        const next = mapAgenticUi(question, data);
-        if (next.status === "awaiting_review" && data.answer) {
-          setAdjustText(data.answer);
+        controllersRef.current.delete(sessionId);
+        markBusy(sessionId, false);
+        await refreshSessions();
+
+        if (activeSessionIdRef.current !== sessionId) {
+          if (data.status === "awaiting_human_review") {
+            stashRef.current[sessionId] = {
+              ui: mapAgenticUi(question, data),
+              activity: [],
+              adjustText: data.answer || "",
+              reviewNote: "",
+              adjustError: null,
+            };
+          } else {
+            delete stashRef.current[sessionId];
+          }
+          return;
         }
-        setUi(next);
+
+        if (data.status === "awaiting_human_review") {
+          if (data.answer) setAdjustText(data.answer);
+          setUi(mapAgenticUi(question, data));
+          return;
+        }
+        await loadSessionView(sessionId);
+        setUi({ status: "idle" });
+        delete stashRef.current[sessionId];
       } catch (err) {
-        if (controller.signal.aborted) return;
+        if (sessionId) {
+          controllersRef.current.delete(sessionId);
+          markBusy(sessionId, false);
+        }
+        if (err instanceof AnswerApiError && err.message === "Corrida cancelada") {
+          return;
+        }
+        if (sessionId && activeSessionIdRef.current !== sessionId) return;
         applyError(err, question);
       }
     })();
   };
 
   const resume = (decision: "approve" | "reject" | "adjust") => {
-    if (!reviewData || isLoading) return;
+    if (!reviewData || isCurrentBusy) return;
     if (decision === "adjust" && !adjustText.trim()) {
       setAdjustError("Para ajustar, editá la respuesta antes de enviar.");
       return;
@@ -209,8 +386,11 @@ export default function AnswerPage() {
     const question =
       ui.status === "awaiting_review" ? ui.question : reviewData.question;
     const threadId = reviewData.thread_id;
+    const sessionId = activeSessionId;
     setAdjustError(null);
     setUi({ status: "loading", question });
+    if (sessionId) markBusy(sessionId, true);
+
     startTransition(async () => {
       try {
         const data = await resumeAgenticAnswer(threadId, {
@@ -220,8 +400,34 @@ export default function AnswerPage() {
             ? { adjusted_answer: adjustText.trim() }
             : {}),
         });
-        setUi(mapAgenticUi(question, data));
+        if (sessionId) markBusy(sessionId, false);
+        await refreshSessions();
+
+        if (sessionId && activeSessionIdRef.current !== sessionId) {
+          if (data.status === "awaiting_human_review") {
+            stashRef.current[sessionId] = {
+              ui: mapAgenticUi(question, data),
+              activity: [],
+              adjustText: data.answer || "",
+              reviewNote: "",
+              adjustError: null,
+            };
+          } else {
+            delete stashRef.current[sessionId];
+          }
+          return;
+        }
+
+        if (sessionId) await loadSessionView(sessionId);
+        if (data.status === "awaiting_human_review") {
+          setUi(mapAgenticUi(question, data));
+        } else {
+          setUi({ status: "idle" });
+          if (sessionId) delete stashRef.current[sessionId];
+        }
       } catch (err) {
+        if (sessionId) markBusy(sessionId, false);
+        if (sessionId && activeSessionIdRef.current !== sessionId) return;
         applyError(err, question);
       }
     });
@@ -244,8 +450,9 @@ export default function AnswerPage() {
       ? ui.data
       : null;
 
-  const hasTranscript = Boolean(activeQuestion);
-  const liveCalls = isLoading ? buildLiveCalls(activity) : [];
+  const hasTranscript =
+    historyTurns.length > 0 || Boolean(activeQuestion) || ui.status === "error";
+  const liveCalls = isCurrentBusy ? buildLiveCalls(activity) : [];
   const finishedCalls = resultData ? buildTraceCalls(resultData) : [];
 
   return (
@@ -261,9 +468,16 @@ export default function AnswerPage() {
                 <VStack gap={8} align="center">
                   <EmptyState
                     title="Preguntá sobre Metropol Fintech"
-                    description="El pipeline planifica, recupera evidencia, sintetiza y valida citas. Mientras corre vas a ver el progreso de cada agente. Si la confianza es baja, el turno se pausa para revisión humana."
+                    description="Las sesiones viven en el menú lateral. Podés cambiar de chat mientras corre una respuesta: no se cancela; al volver ves el resultado."
                     headingLevel={1}
                   />
+                  {sessionBootError ? (
+                    <Banner
+                      status="error"
+                      title="Sesiones"
+                      description={sessionBootError}
+                    />
+                  ) : null}
                   <Grid columns={{ minWidth: 220, max: 3 }} gap={2}>
                     {SUGGESTIONS.map((suggestion) => (
                       <ClickableCard
@@ -271,7 +485,7 @@ export default function AnswerPage() {
                         label={suggestion}
                         variant="muted"
                         padding={3}
-                        isDisabled={isLoading}
+                        isDisabled={isCurrentBusy || !activeSessionId}
                         onClick={() => submitQuestion(suggestion)}
                       >
                         <Text type="body" textWrap="pretty">
@@ -292,7 +506,7 @@ export default function AnswerPage() {
                       ui.kind === "unavailable"
                         ? "Servicio no disponible"
                         : ui.httpStatus === 404
-                          ? "Thread no disponible"
+                          ? "Recurso no disponible"
                           : "No se pudo completar la corrida"
                     }
                     description={ui.message}
@@ -345,7 +559,7 @@ export default function AnswerPage() {
                       label="Nota para el registro (opcional)"
                       value={reviewNote}
                       onChange={setReviewNote}
-                      isDisabled={isLoading}
+                      isDisabled={isCurrentBusy}
                       placeholder="p. ej. revisado con el equipo de negocio"
                     />
                     <TextArea
@@ -355,29 +569,29 @@ export default function AnswerPage() {
                         setAdjustText(v);
                         setAdjustError(null);
                       }}
-                      isDisabled={isLoading}
+                      isDisabled={isCurrentBusy}
                       isOptional
                       description="Solo se envía si elegís Ajustar."
                       placeholder="Editá el borrador antes de ajustar…"
                     />
                     <HStack gap={3} wrap="wrap">
                       <Button
-                        label={isLoading ? "Enviando…" : "Aprobar"}
+                        label={isCurrentBusy ? "Enviando…" : "Aprobar"}
                         variant="primary"
-                        isDisabled={isLoading}
-                        isLoading={isLoading}
+                        isDisabled={isCurrentBusy}
+                        isLoading={isCurrentBusy}
                         onClick={() => resume("approve")}
                       />
                       <Button
                         label="Ajustar"
                         variant="secondary"
-                        isDisabled={isLoading || !adjustText.trim()}
+                        isDisabled={isCurrentBusy || !adjustText.trim()}
                         onClick={() => resume("adjust")}
                       />
                       <Button
                         label="Rechazar"
                         variant="ghost"
-                        isDisabled={isLoading}
+                        isDisabled={isCurrentBusy}
                         onClick={() => resume("reject")}
                       />
                     </HStack>
@@ -388,126 +602,154 @@ export default function AnswerPage() {
                   value={draft}
                   onChange={setDraft}
                   onSubmit={submitQuestion}
-                  isDisabled={isLoading || reviewData != null}
+                  isDisabled={
+                    isCurrentBusy || reviewData != null || !activeSessionId
+                  }
                   placeholder="Escribí una pregunta sobre el corpus…"
                   input={<ChatComposerInput />}
                 />
-                <Text
-                  type="supporting"
-                  color="secondary"
-                  justify="center"
-                  display="block"
-                >
-                  Cada envío es una corrida nueva. El progreso de agentes se
-                  actualiza en vivo; si reiniciás el backend, el thread se
-                  pierde.
-                </Text>
               </VStack>
             }
           >
             {hasTranscript ? (
               <ChatMessageList>
-                <ChatSystemMessage variant="divider">Hoy</ChatSystemMessage>
+                <ChatSystemMessage variant="divider">
+                  {activeSessionId
+                    ? `Sesión ${activeSessionId.slice(0, 8)}`
+                    : "Hoy"}
+                </ChatSystemMessage>
 
-                <ChatMessage sender="user">
-                  <ChatMessageBubble>{activeQuestion}</ChatMessageBubble>
-                </ChatMessage>
-
-                {isLoading ? (
-                  <ChatMessage
-                    sender="assistant"
-                    avatar={<Avatar name="Metropol" size="md" />}
+                {historyTurns.map((turn, index) => (
+                  <VStack
+                    key={`${turn.thread_id ?? "turn"}-${index}`}
+                    gap={2}
                   >
-                    <ChatToolCalls
-                      defaultIsExpanded
-                      label="Flujo en vivo"
-                      calls={liveCalls}
-                    />
-                    <ChatMessageBubble variant="ghost">
-                      <Text type="body" color="secondary">
-                        Corriendo pipeline agentic…
-                      </Text>
-                    </ChatMessageBubble>
-                  </ChatMessage>
-                ) : null}
-
-                {resultData && !isLoading ? (
-                  <ChatMessage
-                    sender="assistant"
-                    avatar={<Avatar name="Metropol" size="md" />}
-                  >
-                    {finishedCalls.length > 0 ? (
-                      <ChatToolCalls
-                        defaultIsExpanded={ui.status === "awaiting_review"}
-                        label="Pasos del agente"
-                        calls={finishedCalls}
-                      />
-                    ) : null}
-
-                    {resultData.answer ? (
-                      <ChatMessageBubble variant="ghost" width="100%">
-                        <Markdown density="compact" headingLevelStart={3}>
-                          {resultData.answer}
-                        </Markdown>
-                      </ChatMessageBubble>
-                    ) : ui.status === "rejected" ? (
-                      <ChatMessageBubble variant="ghost">
-                        <Text type="body" color="secondary">
-                          Corrida rechazada. No hay respuesta publicada.
-                        </Text>
-                      </ChatMessageBubble>
-                    ) : ui.status === "awaiting_review" ? (
-                      <ChatMessageBubble variant="ghost">
-                        <Text type="body" color="secondary">
-                          Borrador en pausa — revisá el panel debajo del
-                          composer.
-                        </Text>
-                      </ChatMessageBubble>
-                    ) : null}
-
-                    {resultData.citations.length > 0 ? (
-                      <ChatMessageBubble variant="ghost" width="100%">
-                        <List
-                          header={
-                            <Heading level={3}>
-                              Evidencia ({resultData.citations.length})
-                            </Heading>
-                          }
-                          hasDividers
-                          density="compact"
-                        >
-                          {resultData.citations.map((c) => (
-                            <ListItem
-                              key={`${c.document_id}-${c.chunk_id}`}
-                              label={c.source_path}
-                              description={c.excerpt}
-                            />
-                          ))}
-                        </List>
-                      </ChatMessageBubble>
-                    ) : null}
-
-                    <ChatMessageMetadata
-                      footer={
-                        <Text type="supporting" color="secondary">
-                          {resultData.status === "completed"
-                            ? "Completada"
-                            : resultData.status === "awaiting_human_review"
-                              ? "En revisión"
+                    <ChatMessage sender="user">
+                      <ChatMessageBubble>{turn.question}</ChatMessageBubble>
+                    </ChatMessage>
+                    <ChatMessage
+                      sender="assistant"
+                      avatar={<Avatar name="Metropol" size="md" />}
+                    >
+                      {turn.answer ? (
+                        <ChatMessageBubble variant="ghost" width="100%">
+                          <Markdown density="compact" headingLevelStart={3}>
+                            {turn.answer}
+                          </Markdown>
+                        </ChatMessageBubble>
+                      ) : turn.status === "rejected" ? (
+                        <ChatMessageBubble variant="ghost">
+                          <Text type="body" color="secondary">
+                            Corrida rechazada.
+                          </Text>
+                        </ChatMessageBubble>
+                      ) : null}
+                      {turn.citations.length > 0 ? (
+                        <ChatMessageBubble variant="ghost" width="100%">
+                          <List
+                            header={
+                              <Heading level={3}>
+                                Evidencia ({turn.citations.length})
+                              </Heading>
+                            }
+                            hasDividers
+                            density="compact"
+                          >
+                            {turn.citations.map((c, ci) => (
+                              <ListItem
+                                key={`${c.document_id}-${c.chunk_id}-${ci}`}
+                                label={c.source_path || "fuente"}
+                                description={c.excerpt}
+                              />
+                            ))}
+                          </List>
+                        </ChatMessageBubble>
+                      ) : null}
+                      <ChatMessageMetadata
+                        footer={
+                          <Text type="supporting" color="secondary">
+                            {turn.status === "completed"
+                              ? "Completada"
                               : "Rechazada"}
-                          {resultData.prompt_version
-                            ? ` · ${resultData.prompt_version}`
-                            : ""}
-                        </Text>
-                      }
-                    />
-                  </ChatMessage>
-                ) : null}
+                          </Text>
+                        }
+                      />
+                    </ChatMessage>
+                  </VStack>
+                ))}
 
-                {ui.status === "completed" && resultData?.no_evidence ? (
-                  <ChatSystemMessage>
-                    Sin evidencia suficiente en el corpus para esta pregunta.
-                  </ChatSystemMessage>
+                {activeQuestion ? (
+                  <>
+                    <ChatMessage sender="user">
+                      <ChatMessageBubble>{activeQuestion}</ChatMessageBubble>
+                    </ChatMessage>
+
+                    {isCurrentBusy ? (
+                      <ChatMessage
+                        sender="assistant"
+                        avatar={<Avatar name="Metropol" size="md" />}
+                      >
+                        <ChatToolCalls
+                          defaultIsExpanded
+                          label="Flujo en vivo"
+                          calls={liveCalls}
+                        />
+                        <ChatMessageBubble variant="ghost">
+                          <Text type="body" color="secondary">
+                            Corriendo pipeline agentic…
+                          </Text>
+                        </ChatMessageBubble>
+                      </ChatMessage>
+                    ) : null}
+
+                    {resultData && !isCurrentBusy ? (
+                      <ChatMessage
+                        sender="assistant"
+                        avatar={<Avatar name="Metropol" size="md" />}
+                      >
+                        {finishedCalls.length > 0 ? (
+                          <ChatToolCalls
+                            defaultIsExpanded={ui.status === "awaiting_review"}
+                            label="Pasos del agente"
+                            calls={finishedCalls}
+                          />
+                        ) : null}
+
+                        {resultData.answer ? (
+                          <ChatMessageBubble variant="ghost" width="100%">
+                            <Markdown density="compact" headingLevelStart={3}>
+                              {resultData.answer}
+                            </Markdown>
+                          </ChatMessageBubble>
+                        ) : ui.status === "rejected" ? (
+                          <ChatMessageBubble variant="ghost">
+                            <Text type="body" color="secondary">
+                              Corrida rechazada. No hay respuesta publicada.
+                            </Text>
+                          </ChatMessageBubble>
+                        ) : ui.status === "awaiting_review" ? (
+                          <ChatMessageBubble variant="ghost">
+                            <Text type="body" color="secondary">
+                              Borrador en pausa — revisá el panel debajo del
+                              composer.
+                            </Text>
+                          </ChatMessageBubble>
+                        ) : null}
+
+                        <ChatMessageMetadata
+                          footer={
+                            <Text type="supporting" color="secondary">
+                              {resultData.status === "completed"
+                                ? "Completada"
+                                : resultData.status === "awaiting_human_review"
+                                  ? "En revisión"
+                                  : "Rechazada"}
+                            </Text>
+                          }
+                        />
+                      </ChatMessage>
+                    ) : null}
+                  </>
                 ) : null}
               </ChatMessageList>
             ) : null}
@@ -515,5 +757,27 @@ export default function AnswerPage() {
         </LayoutContent>
       }
     />
+  );
+}
+
+export default function AnswerPage() {
+  return (
+    <Suspense
+      fallback={
+        <Layout
+          height="fill"
+          padding={6}
+          content={
+            <LayoutContent>
+              <Text type="body" color="secondary">
+                Cargando chat…
+              </Text>
+            </LayoutContent>
+          }
+        />
+      }
+    >
+      <AnswerPageInner />
+    </Suspense>
   );
 }

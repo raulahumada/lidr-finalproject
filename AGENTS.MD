@@ -154,17 +154,32 @@ Si confianza < `AGENTIC_CONFIDENCE_THRESHOLD` (default `0.55`), sin evidencia, o
 
 **Live progress (consola):** `POST /answer/agentic/start` agenda en background (HTTP 202 + `thread_id`) y `GET /answer/agentic/{thread_id}/progress` narra nodos mientras `running`. El **activity log** sigue **in-process** (se pierde al reload; un thread pausado igual se puede `resume` si el checkpointer es Postgres).
 
+**Sesiones de chat (`session_id` ≠ `thread_id`):** una sesión agrupa muchos runs agentic; el transcript vive en Postgres (`conversation_sessions`, Alembic).
+
+| Acción | Endpoint |
+|--------|----------|
+| Crear | `POST /api/v1/answer/session` → 201 + `session_id` |
+| Listar | `GET /api/v1/answer/sessions` |
+| Ver / history | `GET /api/v1/answer/session/{id}` |
+| Renombrar | `PATCH /api/v1/answer/session/{id}` `{"title":…}` |
+| Borrar | `DELETE /api/v1/answer/session/{id}` → 204 |
+
+Pasá `session_id` opcional en `POST /answer/agentic` y `/answer/agentic/start`. Al terminar (`completed` / `rejected`, también tras resume) se appendea el turno al history. Sin `session_id`, el comportamiento anterior no cambia.
+
 ```bash
 cd backend && source .venv/bin/activate
+alembic upgrade head   # incluye conversation_sessions
 # OPENAI_API_KEY en backend/.env
+SESSION=$(curl -s -X POST http://localhost:8000/api/v1/answer/session | python3 -c 'import sys,json; print(json.load(sys.stdin)["session_id"])')
+
 curl -s -w '\nHTTP %{http_code}\n' http://localhost:8000/api/v1/answer/agentic \
   -H 'Content-Type: application/json' \
-  -d '{"question":"¿Cómo es el handoff de cobranzas con Tenela?","k":5}' | python3 -m json.tool
+  -d "{\"question\":\"¿Cómo es el handoff de cobranzas con Tenela?\",\"k\":5,\"session_id\":\"$SESSION\"}" | python3 -m json.tool
 
 # Live progress (start + poll):
 THREAD=$(curl -s -X POST http://localhost:8000/api/v1/answer/agentic/start \
   -H 'Content-Type: application/json' \
-  -d '{"question":"¿Cómo es el handoff de cobranzas con Tenela?"}' | python3 -c 'import sys,json; print(json.load(sys.stdin)["thread_id"])')
+  -d "{\"question\":\"¿Cómo es el handoff de cobranzas con Tenela?\",\"session_id\":\"$SESSION\"}" | python3 -c 'import sys,json; print(json.load(sys.stdin)["thread_id"])')
 curl -s "http://localhost:8000/api/v1/answer/agentic/${THREAD}/progress" | python3 -m json.tool
 
 # Si status=awaiting_human_review (HTTP 202 sync, o progress terminal), retomá con el thread_id:
@@ -202,9 +217,9 @@ Scripts: `dev`, `build`, `start`, `lint`.
 ## Estado actual / gaps
 
 - Sin package/workspace root; cada carpeta se instala y corre por separado.
-- RAG: Alembic + `POST /api/v1/search` + ingest + `POST /answer` + `POST /answer/agentic` (+ `/start` + `/progress`; Postgres checkpointer + activity log in-process; follow-up: orchestrator).
+- RAG: Alembic + `POST /api/v1/search` + ingest + `POST /answer` + `POST /answer/agentic` (+ `/start` + `/progress` + chat sessions); Postgres checkpointer + activity log in-process; follow-up: orchestrator / session memory en el LLM.
 - Items CRUD sigue en memoria.
-- Front chat agentic en `/answer` (Astryx); sin package de tipos compartidos monorepo.
+- Front chat agentic multi-sesión en `/answer` (Astryx); sin package de tipos compartidos monorepo.
 
 ## Convenciones para agentes
 
