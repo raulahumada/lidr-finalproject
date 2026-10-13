@@ -9,6 +9,7 @@ import {
 export type AgenticAnswerRequest = {
   question: string;
   k?: number;
+  session_id?: string;
 };
 
 export type AgenticResumeRequest = {
