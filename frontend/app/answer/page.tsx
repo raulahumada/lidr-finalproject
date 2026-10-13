@@ -26,6 +26,7 @@ import {
   ChatToolCalls,
 } from "@astryxdesign/core/Chat";
 import { ClickableCard } from "@astryxdesign/core/ClickableCard";
+import { Collapsible } from "@astryxdesign/core/Collapsible";
 import { EmptyState } from "@astryxdesign/core/EmptyState";
 import { Heading } from "@astryxdesign/core/Heading";
 import { Grid } from "@astryxdesign/core/Grid";
@@ -193,6 +194,111 @@ function CustomNotesList({
           />
         ))}
       </List>
+    </ChatMessageBubble>
+  );
+}
+
+type EvidenceCitation = {
+  chunk_id: number | null;
+  document_id: number | null;
+  source_path: string;
+  excerpt: string;
+};
+
+function EvidenceList({
+  citations,
+  listKeyPrefix,
+}: {
+  citations: EvidenceCitation[];
+  listKeyPrefix: string;
+}) {
+  if (citations.length === 0) return null;
+  return (
+    <ChatMessageBubble variant="ghost" width="100%">
+      <List
+        header={
+          <Heading level={3}>Evidencia ({citations.length})</Heading>
+        }
+        hasDividers
+        density="compact"
+      >
+        {citations.map((c, ci) => (
+          <ListItem
+            key={`${listKeyPrefix}-${c.document_id}-${c.chunk_id}-${ci}`}
+            label={c.source_path || "fuente"}
+            description={
+              <Text type="supporting" color="secondary" textWrap="pretty">
+                {c.excerpt}
+              </Text>
+            }
+          />
+        ))}
+      </List>
+    </ChatMessageBubble>
+  );
+}
+
+type ToolCallRow = {
+  key: string;
+  name: string;
+  target: string;
+  status: "complete" | "running" | "pending";
+};
+
+function RunAudit({
+  routing,
+  toolCalls,
+  toolLabel,
+  defaultOpen,
+  routeKeyPrefix,
+}: {
+  routing: RoutingHistoryEntry[];
+  toolCalls: ToolCallRow[];
+  toolLabel: string;
+  defaultOpen: boolean;
+  routeKeyPrefix: string;
+}) {
+  if (routing.length === 0 && toolCalls.length === 0) return null;
+  return (
+    <ChatMessageBubble variant="ghost" width="100%">
+      <Collapsible
+        key={defaultOpen ? "audit-open" : "audit-closed"}
+        trigger={
+          <Text type="label" weight="semibold">
+            Flujo / auditoría
+          </Text>
+        }
+        defaultIsOpen={defaultOpen}
+      >
+        <VStack gap={3}>
+          {toolCalls.length > 0 ? (
+            <ChatToolCalls
+              defaultIsExpanded
+              label={toolLabel}
+              calls={toolCalls}
+            />
+          ) : null}
+          {routing.length > 0 ? (
+            <List
+              header={<Heading level={3}>Ruteo</Heading>}
+              hasDividers
+              density="compact"
+            >
+              {routing.map((step) => (
+                <ListItem
+                  key={`${routeKeyPrefix}-${step.step}-${step.next_agent}`}
+                  label={`→ ${step.next_agent}`}
+                  description={
+                    step.reason
+                      ? `${step.reason}${step.source ? ` (${step.source})` : ""}`
+                      : step.source || undefined
+                  }
+                />
+              ))}
+            </List>
+          ) : null}
+        </VStack>
+      </Collapsible>
     </ChatMessageBubble>
   );
 }
@@ -745,27 +851,10 @@ function AnswerPageInner() {
                         notes={turn.custom_notes || []}
                         listKeyPrefix={`hist-note-${index}`}
                       />
-                      {turn.citations.length > 0 ? (
-                        <ChatMessageBubble variant="ghost" width="100%">
-                          <List
-                            header={
-                              <Heading level={3}>
-                                Evidencia ({turn.citations.length})
-                              </Heading>
-                            }
-                            hasDividers
-                            density="compact"
-                          >
-                            {turn.citations.map((c, ci) => (
-                              <ListItem
-                                key={`${c.document_id}-${c.chunk_id}-${ci}`}
-                                label={c.source_path || "fuente"}
-                                description={c.excerpt}
-                              />
-                            ))}
-                          </List>
-                        </ChatMessageBubble>
-                      ) : null}
+                      <EvidenceList
+                        citations={turn.citations}
+                        listKeyPrefix={`hist-ev-${index}`}
+                      />
                       <ChatMessageMetadata
                         footer={
                           <Text type="supporting" color="secondary">
@@ -795,43 +884,22 @@ function AnswerPageInner() {
                             <Badge variant="teal" label={shownDomain} />
                           </HStack>
                         ) : null}
-                        <ChatToolCalls
-                          defaultIsExpanded
-                          label="Flujo en vivo"
-                          calls={liveCalls}
-                        />
-                        {shownRouting.length > 0 ? (
-                          <ChatMessageBubble variant="ghost" width="100%">
-                            <List
-                              header={
-                                <Heading level={3}>Ruteo</Heading>
-                              }
-                              hasDividers
-                              density="compact"
-                            >
-                              {shownRouting.map((step) => (
-                                <ListItem
-                                  key={`route-${step.step}-${step.next_agent}`}
-                                  label={`→ ${step.next_agent}`}
-                                  description={
-                                    step.reason
-                                      ? `${step.reason}${step.source ? ` (${step.source})` : ""}`
-                                      : step.source || undefined
-                                  }
-                                />
-                              ))}
-                            </List>
-                          </ChatMessageBubble>
-                        ) : null}
-                        <CustomNotesList
-                          notes={shownCustomNotes}
-                          listKeyPrefix="live-note"
-                        />
                         <ChatMessageBubble variant="ghost">
                           <Text type="body" color="secondary">
                             Corriendo pipeline agentic…
                           </Text>
                         </ChatMessageBubble>
+                        <CustomNotesList
+                          notes={shownCustomNotes}
+                          listKeyPrefix="live-note"
+                        />
+                        <RunAudit
+                          routing={shownRouting}
+                          toolCalls={liveCalls}
+                          toolLabel="Flujo en vivo"
+                          defaultOpen
+                          routeKeyPrefix="route"
+                        />
                       </ChatMessage>
                     ) : null}
 
@@ -845,40 +913,6 @@ function AnswerPageInner() {
                             <Badge variant="teal" label={shownDomain} />
                           </HStack>
                         ) : null}
-                        {finishedCalls.length > 0 ? (
-                          <ChatToolCalls
-                            defaultIsExpanded={ui.status === "awaiting_review"}
-                            label="Pasos del agente"
-                            calls={finishedCalls}
-                          />
-                        ) : null}
-                        {shownRouting.length > 0 ? (
-                          <ChatMessageBubble variant="ghost" width="100%">
-                            <List
-                              header={
-                                <Heading level={3}>Ruteo</Heading>
-                              }
-                              hasDividers
-                              density="compact"
-                            >
-                              {shownRouting.map((step) => (
-                                <ListItem
-                                  key={`done-route-${step.step}-${step.next_agent}`}
-                                  label={`→ ${step.next_agent}`}
-                                  description={
-                                    step.reason
-                                      ? `${step.reason}${step.source ? ` (${step.source})` : ""}`
-                                      : step.source || undefined
-                                  }
-                                />
-                              ))}
-                            </List>
-                          </ChatMessageBubble>
-                        ) : null}
-                        <CustomNotesList
-                          notes={shownCustomNotes}
-                          listKeyPrefix="done-note"
-                        />
 
                         {resultData.answer ? (
                           <ChatMessageBubble variant="ghost" width="100%">
@@ -900,6 +934,22 @@ function AnswerPageInner() {
                             </Text>
                           </ChatMessageBubble>
                         ) : null}
+
+                        <CustomNotesList
+                          notes={shownCustomNotes}
+                          listKeyPrefix="done-note"
+                        />
+                        <EvidenceList
+                          citations={resultData.citations || []}
+                          listKeyPrefix="done-ev"
+                        />
+                        <RunAudit
+                          routing={shownRouting}
+                          toolCalls={finishedCalls}
+                          toolLabel="Pasos del agente"
+                          defaultOpen={false}
+                          routeKeyPrefix="done-route"
+                        />
 
                         <ChatMessageMetadata
                           footer={
