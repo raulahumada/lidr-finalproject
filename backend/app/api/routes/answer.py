@@ -18,6 +18,16 @@ def answer(
     request: AnswerRequest,
     service: Optional[AnswerService] = Depends(get_answer_service),
 ) -> AnswerResponse:
+    if request.session_id is not None:
+        raise HTTPException(
+            status_code=getattr(
+                status, "HTTP_422_UNPROCESSABLE_CONTENT", status.HTTP_422_UNPROCESSABLE_ENTITY
+            ),
+            detail=(
+                "session_id is not supported on POST /answer (single-shot). "
+                "Use POST /answer/agentic or /answer/agentic/start with a session."
+            ),
+        )
     if service is None:
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,

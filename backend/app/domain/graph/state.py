@@ -10,7 +10,10 @@ class AgenticAnswerState(TypedDict, total=False):
     question: str
     k: int
     session_id: str
+    conversation_window: list[dict[str, Any]]
     framed_query: str
+    resolved_question: str
+    resolved_substituted: list[str]
     hits: list[dict[str, Any]]
     answer: str
     citations: list[dict[str, Any]]

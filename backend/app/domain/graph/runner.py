@@ -60,8 +60,19 @@ class AgenticAnswerRunner:
                 "context_max_tokens": settings.answer_context_max_tokens,
                 "prompt_version": settings.answer_prompt_version,
                 "knowledge_pack": build_knowledge_pack(settings.knowledge_pack_max_tokens),
+                "conversation_memory_max_tokens": settings.conversation_memory_max_tokens,
             }
         }
+
+    def _conversation_window(self, session_id: str | None) -> list[dict[str, Any]]:
+        if not session_id or self.session_store is None:
+            return []
+        view = self.session_store.get(session_id)
+        if view is None:
+            return []
+        history = list(view.get("history") or [])
+        max_turns = max(1, int(self.settings.conversation_max_turns))
+        return history[-max_turns:]
 
     def _initial_state(
         self,
@@ -76,6 +87,7 @@ class AgenticAnswerRunner:
             "agent_trace": [],
             "review_reasons": [],
             "prompt_version": self.settings.answer_prompt_version,
+            "conversation_window": self._conversation_window(session_id),
         }
         if session_id:
             initial["session_id"] = session_id
@@ -99,6 +111,7 @@ class AgenticAnswerRunner:
                 citations=[c.model_dump() for c in response.citations],
                 status=response.status,
                 thread_id=response.thread_id,
+                resolved_question=response.resolved_question,
             )
         except SessionNotFoundError:
             log.warning(
@@ -304,6 +317,7 @@ class AgenticAnswerRunner:
                 status="awaiting_human_review",
                 thread_id=thread_id,
                 question=str(result.get("question") or ""),
+                resolved_question=self._optional_resolved(result),
                 answer=result.get("answer"),
                 citations=self._citations(result.get("citations") or []),
                 agent_trace=self._trace(result.get("agent_trace") or []),
@@ -323,6 +337,7 @@ class AgenticAnswerRunner:
             status=status,  # type: ignore[arg-type]
             thread_id=thread_id,
             question=str(result.get("question") or ""),
+            resolved_question=self._optional_resolved(result),
             answer=result.get("answer"),
             citations=self._citations(result.get("citations") or []),
             agent_trace=self._trace(result.get("agent_trace") or []),
@@ -333,6 +348,17 @@ class AgenticAnswerRunner:
             prompt_version=result.get("prompt_version"),
             k=resolved_k,
         )
+
+    @staticmethod
+    def _optional_resolved(result: dict[str, Any]) -> str | None:
+        written = str(result.get("question") or "").strip()
+        resolved = str(result.get("resolved_question") or "").strip()
+        if not resolved or resolved == written:
+            substituted = result.get("resolved_substituted") or []
+            if not substituted:
+                return None
+        return resolved or None
+
 
     @staticmethod
     def _citations(raw: list[dict[str, Any]]) -> list[Citation]:

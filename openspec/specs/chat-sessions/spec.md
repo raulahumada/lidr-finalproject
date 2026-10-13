@@ -25,7 +25,7 @@ The system SHALL expose `GET /api/v1/answer/sessions` that returns zero or more 
 - **THEN** each summary includes `session_id` and turn_count reflecting closed history turns
 
 ### Requirement: Read session returns durable history
-The system SHALL expose `GET /api/v1/answer/session/{session_id}` that returns the session view including `history` turns (question, answer, citation snapshots, terminal status, related `thread_id` when known, timestamp).
+The system SHALL expose `GET /api/v1/answer/session/{session_id}` that returns the session view including `history` turns (question, optional `resolved_question`, answer, citation snapshots, terminal status, related `thread_id` when known, timestamp).
 
 #### Scenario: Unknown session
 - **WHEN** the session id was never minted or was deleted
@@ -34,6 +34,10 @@ The system SHALL expose `GET /api/v1/answer/session/{session_id}` that returns t
 #### Scenario: History after turns
 - **WHEN** the session has closed turns
 - **THEN** `history` lists those turns in chronological order
+
+#### Scenario: Resolved question on turn
+- **WHEN** a closed turn was stored with a rewritten query
+- **THEN** that history entry includes `resolved_question`
 
 ### Requirement: Rename and delete session
 The system SHALL allow `PATCH /api/v1/answer/session/{session_id}` to update the title and `DELETE /api/v1/answer/session/{session_id}` returning HTTP 204 on success.

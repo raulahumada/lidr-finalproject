@@ -27,6 +27,7 @@ class HistoryTurnCitation(BaseModel):
 
 class HistoryTurn(BaseModel):
     question: str
+    resolved_question: str | None = None
     answer: str | None = None
     citations: list[HistoryTurnCitation] = Field(default_factory=list)
     status: Literal["completed", "rejected"] = "completed"

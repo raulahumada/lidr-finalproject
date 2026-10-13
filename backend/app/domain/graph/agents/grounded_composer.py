@@ -9,6 +9,7 @@ from langchain_core.runnables import RunnableConfig
 from app.domain.answer_service import AnswerService
 from app.domain.graph.state import AgenticAnswerState
 from app.foundation.prompts.loader import render_answer_prompts
+from app.generation.conversation.budget import render_memory
 from app.generation.rag.context_blocks import build_context, fit_to_budget
 from app.schemas.search import SearchHit
 
@@ -37,7 +38,17 @@ def grounded_composer(state: AgenticAnswerState, config: RunnableConfig) -> dict
 
     hits = [SearchHit.model_validate(h) for h in hits_raw]
     max_tokens = int(cfg.get("context_max_tokens") or 3500)
-    blocks = fit_to_budget(hits, max_tokens=max_tokens)
+    memory_budget = int(cfg.get("conversation_memory_max_tokens") or 1024)
+    memory = render_memory(
+        list(state.get("conversation_window") or []),
+        budget=memory_budget,
+    )
+    memory_text = memory.text if memory else ""
+    memory_tokens = memory.tokens_used if memory else 0
+    # Evidence wins: charge memory inside the context budget, never on top.
+    evidence_budget = max(500, max_tokens - memory_tokens)
+
+    blocks = fit_to_budget(hits, max_tokens=evidence_budget)
     if not blocks:
         return {
             "answer": _NO_EVIDENCE,
@@ -54,7 +65,9 @@ def grounded_composer(state: AgenticAnswerState, config: RunnableConfig) -> dict
 
     prompt_version = str(cfg.get("prompt_version") or "v2")
     knowledge_pack = str(cfg.get("knowledge_pack") or "")
-    question = state.get("question") or ""
+    question = (
+        state.get("resolved_question") or state.get("question") or ""
+    )
     if prompt_version == "v1":
         system, user = render_answer_prompts(
             version="v1",
@@ -68,6 +81,7 @@ def grounded_composer(state: AgenticAnswerState, config: RunnableConfig) -> dict
                 }
                 for b in blocks
             ],
+            memory_block=memory_text,
         )
     else:
         system, user = render_answer_prompts(
@@ -75,6 +89,7 @@ def grounded_composer(state: AgenticAnswerState, config: RunnableConfig) -> dict
             knowledge_pack=knowledge_pack,
             question=question,
             context=build_context(blocks),
+            memory_block=memory_text,
         )
 
     chat = cfg["chat"]
@@ -83,6 +98,11 @@ def grounded_composer(state: AgenticAnswerState, config: RunnableConfig) -> dict
     citations = [
         c.model_dump() for c in AnswerService._citations_from_model(blocks, raw)
     ]
+    summary = f"composed answer with {len(citations)} citation(s)"
+    if memory:
+        summary += f"; memory {memory.turns_included} turn(s)"
+        if memory.trimmed:
+            summary += f" (dropped {memory.turns_dropped})"
     return {
         "answer": answer_text,
         "citations": citations,
@@ -91,7 +111,7 @@ def grounded_composer(state: AgenticAnswerState, config: RunnableConfig) -> dict
         "agent_trace": [
             {
                 "node": "grounded_composer",
-                "summary": f"composed answer with {len(citations)} citation(s)",
+                "summary": summary,
             }
         ],
     }

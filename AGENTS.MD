@@ -166,6 +166,16 @@ Si confianza < `AGENTIC_CONFIDENCE_THRESHOLD` (default `0.55`), sin evidencia, o
 
 Pasá `session_id` opcional en `POST /answer/agentic` y `/answer/agentic/start`. Al terminar (`completed` / `rejected`, también tras resume) se appendea el turno al history. Sin `session_id`, el comportamiento anterior no cambia.
 
+**Tres conceptos distintos:**
+
+| Concepto | Qué es |
+|----------|--------|
+| Transcript / `session_id` | Historial durable en Postgres (UI + F5) |
+| Checkpointer / `thread_id` | Estado pausado de **un** run LangGraph |
+| Conversation memory | Con `session_id`, resuelve follow-ups **antes del retrieve** y mete una ventana de turnos en el prompt (no es evidencia citable). Settings: `CONVERSATION_MAX_TURNS` (default 4), `CONVERSATION_MEMORY_MAX_TOKENS` (default 1024) |
+
+`POST /answer` (sync, un tiro) **rechaza** `session_id` con HTTP **422** — no tiene framing de memoria; usá agentic + session.
+
 ```bash
 cd backend && source .venv/bin/activate
 alembic upgrade head   # incluye conversation_sessions
@@ -217,7 +227,7 @@ Scripts: `dev`, `build`, `start`, `lint`.
 ## Estado actual / gaps
 
 - Sin package/workspace root; cada carpeta se instala y corre por separado.
-- RAG: Alembic + `POST /api/v1/search` + ingest + `POST /answer` + `POST /answer/agentic` (+ `/start` + `/progress` + chat sessions); Postgres checkpointer + activity log in-process; follow-up: orchestrator / session memory en el LLM.
+- RAG: Alembic + `POST /api/v1/search` + ingest + `POST /answer` + `POST /answer/agentic` (+ `/start` + `/progress` + chat sessions + conversation memory); Postgres checkpointer + activity log in-process; follow-up: orchestrator / facts+anchors.
 - Items CRUD sigue en memoria.
 - Front chat agentic multi-sesión en `/answer` (Astryx); sin package de tipos compartidos monorepo.
 

@@ -6,6 +6,8 @@ from pydantic import BaseModel, Field
 class AnswerRequest(BaseModel):
     question: str = Field(..., min_length=1, max_length=4000)
     k: int | None = Field(default=None, ge=1, le=50)
+    # Detected only to reject: sync answer has no conversation memory.
+    session_id: str | None = Field(default=None, min_length=1, max_length=64)
 
 
 class Citation(BaseModel):

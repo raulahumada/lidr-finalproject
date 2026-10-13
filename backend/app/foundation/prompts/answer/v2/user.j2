@@ -1,5 +1,9 @@
 Pregunta:
 {{ question }}
+{% if memory_block %}
+
+{{ memory_block }}
+{% endif %}
 
 Contexto recuperado (evidencia para redactar, no para reenviar).
 Cada bloque declara `[id=…]` y `source_path`. Explicá en prosa; citá solo esos ids/índices:

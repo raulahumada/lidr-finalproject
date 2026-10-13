@@ -30,6 +30,7 @@ class AgenticAnswerResponse(BaseModel):
     ]
     thread_id: str
     question: str
+    resolved_question: str | None = None
     answer: str | None = None
     citations: list[Citation] = Field(default_factory=list)
     agent_trace: list[AgentTraceStep] = Field(default_factory=list)
