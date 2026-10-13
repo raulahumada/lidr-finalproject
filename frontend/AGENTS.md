@@ -42,6 +42,12 @@ RULES:
 
 Chat UI (`/answer`) calls FastAPI at `NEXT_PUBLIC_API_BASE_URL` (default `http://localhost:8000`). Copy `.env.example` → `.env.local` if you need a different origin. Backend CORS already allows `http://localhost:3000`.
 
+## Home (`/`)
+
+Entrada de producto Metropol (Astryx): título + copy corto + CTAs a **Chat** (`/answer`), **Agentes** (`/agents`) y **Búsqueda** (`/search`). Sin boilerplate de create-next-app.
+
+Smoke: abrir `/` → “Abrir chat” llega a `/answer`; “Agentes” y “Búsqueda” a sus rutas.
+
 ## Agentic answer chat (`/answer`)
 
 Primary path is **agentic live progress** + **multi-sesión** + **orquestador star** (Astryx `ai-chat` frame: session list, domain override, suggestions, live agent steps, routing, Markdown, evidence, human gate):
