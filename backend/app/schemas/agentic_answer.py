@@ -39,3 +39,39 @@ class AgenticAnswerResponse(BaseModel):
     prompt_version: str | None = None
     k: int | None = None
     interrupt_payload: dict[str, Any] | None = None
+
+
+class AgenticStartResponse(BaseModel):
+    status: Literal["running"] = "running"
+    thread_id: str
+
+
+class GraphActivityEntry(BaseModel):
+    node: str
+    label: str
+    message: str
+    at: float
+
+
+class AgenticProgressResponse(BaseModel):
+    status: Literal[
+        "running",
+        "completed",
+        "awaiting_human_review",
+        "failed",
+        "rejected",
+    ]
+    thread_id: str
+    activity: list[GraphActivityEntry] = Field(default_factory=list)
+    question: str | None = None
+    answer: str | None = None
+    citations: list[Citation] = Field(default_factory=list)
+    agent_trace: list[AgentTraceStep] = Field(default_factory=list)
+    review_reasons: list[str] = Field(default_factory=list)
+    confidence: float | None = None
+    no_evidence: bool = False
+    citations_valid: bool | None = None
+    prompt_version: str | None = None
+    k: int | None = None
+    interrupt_payload: dict[str, Any] | None = None
+    error: str | None = None

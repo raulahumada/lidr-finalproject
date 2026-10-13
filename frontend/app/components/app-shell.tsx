@@ -46,7 +46,7 @@ export function AppShellLayout({ children }: { children: React.ReactNode }) {
               isSelected={pathname.startsWith("/items")}
             />
             <SideNavItem
-              label="Respuesta"
+              label="Chat"
               icon={MessageSquare}
               href="/answer"
               isSelected={pathname.startsWith("/answer")}

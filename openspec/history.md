@@ -2,6 +2,46 @@
 
 Changelog of promoted changes in this monorepo.
 
+## 2026-10-13 — `add-agentic-live-progress`
+
+**Status:** archived → `openspec/changes/archive/2026-10-13-add-agentic-live-progress/`  
+**Surface:** both  
+**Synced to:** `openspec/specs/agentic-live-progress/spec.md`, `openspec/specs/agentic-answer/spec.md`
+
+### What landed
+
+- `POST /answer/agentic/start` + `GET /answer/agentic/{thread_id}/progress` with in-process activity log
+- Background `graph.stream` narrates Metropol specialist nodes
+- Chat UI polls (~1.2s) and shows live `ChatToolCalls` while running
+
+### Why
+
+Operators need live agent steps (Cristian/course pattern) without token streaming.
+
+### Follow-ups (out of this change)
+
+- Prompt-injection / safety prefilter
+- Redis activity or Postgres checkpointer for multi-worker
+
+## 2026-10-13 — `add-agentic-chat-ui`
+
+**Status:** archived → `openspec/changes/archive/2026-10-13-add-agentic-chat-ui/`  
+**Surface:** frontend  
+**Synced to:** `openspec/specs/agentic-chat-ui/spec.md`, `openspec/specs/answer-chat-ui/spec.md`
+
+### What landed
+
+- `/answer` upgraded to Astryx `ai-chat`: agentic submit, trace, citations, human gate (approve/reject/adjust)
+- Thin agentic client; no `k` in UI; suggestions empty state
+
+### Why
+
+Close the product loop over the existing agentic API (E2 after sync chat).
+
+### Follow-ups (out of this change)
+
+- Live progress start+poll (`add-agentic-live-progress`)
+
 ## 2026-10-12 — `add-answer-chat-ui`
 
 **Status:** archived → `openspec/changes/archive/2026-10-12-add-answer-chat-ui/`  
