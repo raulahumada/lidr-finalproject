@@ -8,15 +8,11 @@ from langchain_core.runnables import RunnableConfig
 
 from app.domain.answer_service import AnswerService
 from app.domain.graph.state import AgenticAnswerState
+from app.domain.grounding import NO_EVIDENCE_ANSWER
 from app.foundation.prompts.loader import render_answer_prompts
 from app.generation.conversation.budget import render_memory
 from app.generation.rag.context_blocks import build_context, fit_to_budget
 from app.schemas.search import SearchHit
-
-_NO_EVIDENCE = (
-    "No encontré evidencia suficiente en el corpus Metropol para responder "
-    "con confianza. Recomendación: reformular la pregunta o escalar a un humano."
-)
 
 
 def grounded_composer(state: AgenticAnswerState, config: RunnableConfig) -> dict[str, Any]:
@@ -24,7 +20,7 @@ def grounded_composer(state: AgenticAnswerState, config: RunnableConfig) -> dict
     hits_raw = state.get("hits") or []
     if not hits_raw or state.get("no_evidence"):
         return {
-            "answer": _NO_EVIDENCE,
+            "answer": NO_EVIDENCE_ANSWER,
             "citations": [],
             "no_evidence": True,
             "confidence": 0.0,
@@ -63,7 +59,7 @@ def grounded_composer(state: AgenticAnswerState, config: RunnableConfig) -> dict
     blocks = fit_to_budget(hits, max_tokens=evidence_budget)
     if not blocks:
         return {
-            "answer": _NO_EVIDENCE,
+            "answer": NO_EVIDENCE_ANSWER,
             "citations": [],
             "no_evidence": True,
             "confidence": 0.0,
@@ -106,7 +102,7 @@ def grounded_composer(state: AgenticAnswerState, config: RunnableConfig) -> dict
 
     chat = cfg["chat"]
     raw = chat.complete_json(system=system, user=user)
-    answer_text = str(raw.get("answer") or "").strip() or _NO_EVIDENCE
+    answer_text = str(raw.get("answer") or "").strip() or NO_EVIDENCE_ANSWER
     citations = [
         c.model_dump() for c in AnswerService._citations_from_model(blocks, raw)
     ]

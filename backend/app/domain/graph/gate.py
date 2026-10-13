@@ -9,6 +9,7 @@ from langgraph.types import interrupt
 
 from app.config import Settings, get_settings
 from app.domain.graph.state import AgenticAnswerState
+from app.domain.grounding import is_thin_grounding
 
 log = logging.getLogger(__name__)
 
@@ -36,6 +37,16 @@ def review_reasons(
 
     if state.get("no_evidence") or not (state.get("hits") or []):
         reasons.append("no evidence was retrieved for this question in the corpus")
+
+    citations = state.get("citations") or []
+    if is_thin_grounding(
+        answer=str(state.get("answer") or ""),
+        citation_count=len(citations) if isinstance(citations, list) else 0,
+        no_evidence=bool(state.get("no_evidence")),
+    ):
+        reasons.append(
+            "long answer with few citations — possible unsupported elaboration"
+        )
 
     return reasons
 

@@ -6,6 +6,7 @@ import logging
 import time
 from typing import Any
 
+from app.domain.grounding import NO_EVIDENCE_ANSWER
 from app.foundation.llm.chat import ChatClient
 from app.foundation.prompts.loader import render_answer_prompts
 from app.generation.cag.exact import ExactAnswerCache
@@ -17,11 +18,6 @@ from app.schemas.answer import AnswerResponse, Citation
 from app.schemas.search import SearchHit
 
 log = logging.getLogger(__name__)
-
-_NO_EVIDENCE = (
-    "No encontré evidencia suficiente en el corpus Metropol para responder "
-    "con confianza. Recomendación: reformular la pregunta o escalar a un humano."
-)
 
 
 class AnswerService:
@@ -80,7 +76,7 @@ class AnswerService:
         if not search.results:
             return AnswerResponse(
                 question=question,
-                answer=_NO_EVIDENCE,
+                answer=NO_EVIDENCE_ANSWER,
                 citations=[],
                 cached="false",
                 prompt_version=self.prompt_version,
@@ -95,7 +91,7 @@ class AnswerService:
         if not blocks:
             return AnswerResponse(
                 question=question,
-                answer=_NO_EVIDENCE,
+                answer=NO_EVIDENCE_ANSWER,
                 citations=[],
                 cached="false",
                 prompt_version=self.prompt_version,
@@ -106,7 +102,7 @@ class AnswerService:
 
         system, user = self._render_prompts(question=question, blocks=blocks)
         raw = self.chat.complete_json(system=system, user=user)
-        answer_text = str(raw.get("answer") or "").strip() or _NO_EVIDENCE
+        answer_text = str(raw.get("answer") or "").strip() or NO_EVIDENCE_ANSWER
         citations = self._citations_from_model(blocks, raw)
 
         response = AnswerResponse(
