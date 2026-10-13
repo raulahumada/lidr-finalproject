@@ -14,6 +14,7 @@ from app.domain.answer_service import AnswerService, build_knowledge_pack
 from app.domain.graph.activity import GraphActivityLog
 from app.domain.graph.runner import AgenticAnswerRunner
 from app.foundation.llm.chat import ChatClient
+from app.foundation.llm.runtime_config import RuntimeModelConfig
 from app.foundation.persistence.database import get_session_factory
 from app.foundation.persistence.repository import ChunkStore
 from app.generation.conversation.store import SessionStore
@@ -29,6 +30,13 @@ log = logging.getLogger(__name__)
 @lru_cache
 def get_chunk_store() -> ChunkStore:
     return ChunkStore()
+
+
+def get_runtime_model_config() -> RuntimeModelConfig:
+    """Redis-backed overrides when available; otherwise defaults-only (writes → 503)."""
+    settings = get_settings()
+    client = _try_redis(settings.redis_url)
+    return RuntimeModelConfig(client, settings)
 
 
 def get_semantic_retriever() -> Optional[SemanticRetriever]:
@@ -67,7 +75,11 @@ def get_answer_service() -> Optional[AnswerService]:
         session_factory=get_session_factory(),
         store=get_chunk_store(),
     )
-    chat = ChatClient(client, model=settings.chat_model)
+    chat = ChatClient(
+        client,
+        model=settings.chat_model,
+        runtime=get_runtime_model_config(),
+    )
 
     exact: ExactAnswerCache | None = None
     semantic: SemanticAnswerCache | None = None
@@ -126,7 +138,11 @@ def get_agentic_answer_runner() -> Optional[AgenticAnswerRunner]:
         session_factory=get_session_factory(),
         store=get_chunk_store(),
     )
-    chat = ChatClient(client, model=settings.chat_model)
+    chat = ChatClient(
+        client,
+        model=settings.chat_model,
+        runtime=get_runtime_model_config(),
+    )
     return AgenticAnswerRunner(
         retriever=retriever,
         chat=chat,

@@ -38,7 +38,7 @@ def test_fabricated_citation_filtered() -> None:
     chat_result = {"answer": "ok", "citation_indices": [0, 99], "citation_ids": [1, 999]}
 
     class ScriptedChat(FakeChat):
-        def complete_json(self, *, system: str, user: str):
+        def complete_json(self, *, system: str, user: str, role: str = "chat"):
             self.calls += 1
             assert "[id=1]" in user
             return chat_result
@@ -70,7 +70,7 @@ def test_citations_from_model_drops_unknown_chunk_id() -> None:
 
 def test_grounded_composer_skips_llm_on_no_evidence() -> None:
     class BoomChat:
-        def complete_json(self, *, system: str, user: str):
+        def complete_json(self, *, system: str, user: str, role: str = "chat"):
             raise AssertionError("LLM must not run on no_evidence")
 
     out = grounded_composer(
@@ -85,7 +85,7 @@ def test_grounded_composer_skips_llm_on_no_evidence() -> None:
 
 def test_sync_answer_skips_llm_on_empty_retrieve() -> None:
     class BoomChat(FakeChat):
-        def complete_json(self, *, system: str, user: str):
+        def complete_json(self, *, system: str, user: str, role: str = "chat"):
             raise AssertionError("LLM must not run without hits")
 
     service = AnswerService(

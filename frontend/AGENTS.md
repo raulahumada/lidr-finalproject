@@ -110,6 +110,20 @@ SideNav → **Ingesta**. Lanza el mismo pipeline que `python -m app.ingestion.ru
 
 Smoke: backend up + `CORPUS_ROOT` + key → `/ingest` → ver docs/chunks → Ingerir (sin force si ya indexado) → summary → “Ir a búsqueda”.
 
+### AI settings (`/settings`)
+
+SideNav → **Ajustes**. Overrides de modelos de chat por rol (`chat` / `composer` / `prompt_specialist`) vía Redis:
+
+| Action | Endpoint |
+|--------|----------|
+| Load | `GET {API}/api/v1/config/models` |
+| Save | `PUT {API}/api/v1/config/models` `{ models: { role: id \| null } }` |
+
+- Selectores Astryx + “Default (.env / cascada)”; embedding solo lectura.
+- 503 si Redis no persiste. Cliente: `lib/api/config.ts`.
+
+Smoke: Redis up → `/settings` → cambiar composer a `gpt-4o` → Guardar → badge override → preguntar en `/answer`.
+
 ### Checkpointer / activity caveat
 
 Backend **pause/resume** uses a durable Postgres checkpointer by default (`DATABASE_URL`); a paused `thread_id` can still be resumed after an API restart. The **activity/progress log** is still **in-process** — after reload, `/progress` may **404** even though `resume` with a known `thread_id` still works. El **historial de sesión** sí sobrevive F5.

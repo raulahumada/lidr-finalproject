@@ -5,6 +5,7 @@ from app.api.routes import (
     answer_agentic,
     answer_agents,
     answer_session,
+    config_models,
     health,
     ingest,
     items,
@@ -16,6 +17,7 @@ api_router.include_router(health.router)
 api_router.include_router(items.router)
 api_router.include_router(search.router)
 api_router.include_router(ingest.router)
+api_router.include_router(config_models.router)
 api_router.include_router(answer.router)
 api_router.include_router(answer_agentic.router)
 api_router.include_router(answer_agents.router)

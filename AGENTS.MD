@@ -62,6 +62,7 @@ Stack: FastAPI, Uvicorn, Pydantic Settings, python-dotenv.
 | `app/api/routes/items.py` | CRUD `/api/v1/items` en memoria |
 | `app/api/routes/search.py` | `POST /api/v1/search` (semántico sobre chunks) |
 | `app/api/routes/ingest.py` | `POST/GET /api/v1/ingest/*` (runs + stats; jobs in-process) |
+| `app/api/routes/config_models.py` | `GET/PUT /api/v1/config/models` (runtime chat roles; Redis) |
 | `app/foundation/persistence/` | SQLAlchemy engine, modelos `documents`/`chunks`, store |
 | `app/generation/rag/` | Embedder OpenAI, retriever, seed fixture |
 | `app/schemas/` | Contratos Pydantic (items, search) |
@@ -150,6 +151,17 @@ Compose debe incluir **Redis Stack** (`redis` en `docker-compose.yml`) además d
 Flujo: caché exacta → caché semántica (`SEMANTIC_CACHE_LOG_ONLY=true` por defecto) → retrieve → presupuesto de contexto → pack Metropol + Jinja (`ANSWER_PROMPT_VERSION=v2` por defecto) → LLM → citas validadas.
 
 Al cambiar prompts o `ANSWER_PROMPT_VERSION`, las claves de caché exacta cambian con la versión; si iterás el mismo `v2` (p. ej. reglas de grounding / abstención en `system.j2`) y ves respuestas viejas: `docker compose exec redis redis-cli FLUSHDB`. Preferir iterar `v2` + flush antes de crear `v3`.
+
+### Runtime chat models (`/config/models` + UI `/settings`)
+
+Overrides en Redis (`lidr:runtime_models`) por rol: `chat` (sync `/answer`), `composer` (grounded), `prompt_specialist` (customs). Fallback: override del rol → override `chat` → `CHAT_MODEL` del `.env`. Allowlist: `AVAILABLE_CHAT_MODELS`. **Embedding no se puede cambiar por HTTP.** Write sin Redis → **503**. Cambiar modelo puede seguir sirviendo hits de Response CAG hasta TTL — si la demo se ve “vieja”: `FLUSHDB`.
+
+```bash
+curl -s http://localhost:8000/api/v1/config/models | python3 -m json.tool
+curl -s -X PUT http://localhost:8000/api/v1/config/models \
+  -H 'Content-Type: application/json' \
+  -d '{"models":{"composer":"gpt-4o","prompt_specialist":null}}' | python3 -m json.tool
+```
 
 ```bash
 docker compose up -d redis
@@ -278,7 +290,7 @@ Scripts: `dev`, `build`, `start`, `lint`.
 ## Estado actual / gaps
 
 - Sin package/workspace root; cada carpeta se instala y corre por separado.
-- RAG: Alembic + `POST /api/v1/search` + ingest CLI/HTTP (`/api/v1/ingest/*` + UI `/ingest`) + `POST /answer` + `POST /answer/agentic` (+ `/start` + `/progress` + chat sessions + conversation memory con facts/anchors); Postgres checkpointer + activity log in-process; follow-up: orchestrator / AI settings / auth.
+- RAG: Alembic + `POST /api/v1/search` + ingest CLI/HTTP (`/api/v1/ingest/*` + UI `/ingest`) + `POST /answer` + `POST /answer/agentic` (+ `/start` + `/progress` + chat sessions + conversation memory) + runtime models (`/config/models` + `/settings`); Postgres checkpointer + activity log in-process; follow-up: auth.
 - Items CRUD sigue en memoria.
 - Front chat agentic multi-sesión en `/answer` (Astryx); sin package de tipos compartidos monorepo.
 

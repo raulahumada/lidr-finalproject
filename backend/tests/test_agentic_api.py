@@ -22,7 +22,7 @@ class FakeRetriever:
 class FakeChat:
     model = "gpt-test"
 
-    def complete_json(self, *, system: str, user: str) -> dict[str, Any]:
+    def complete_json(self, *, system: str, user: str, role: str = "chat") -> dict[str, Any]:
         return {"answer": "ok agentic", "citation_indices": [0]}
 
 

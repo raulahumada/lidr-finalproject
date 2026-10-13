@@ -9,19 +9,45 @@ from typing import Any
 
 from openai import OpenAI
 
+from app.foundation.llm.runtime_config import ChatRole, RuntimeModelConfig
+
 log = logging.getLogger(__name__)
 
 _JSON_BLOCK = re.compile(r"\{.*\}", re.DOTALL)
 
 
 class ChatClient:
-    def __init__(self, client: OpenAI, *, model: str) -> None:
+    def __init__(
+        self,
+        client: OpenAI,
+        *,
+        model: str,
+        runtime: RuntimeModelConfig | None = None,
+    ) -> None:
         self._client = client
-        self.model = model
+        self._default_model = model
+        self._runtime = runtime
 
-    def complete_json(self, *, system: str, user: str) -> dict[str, Any]:
+    @property
+    def model(self) -> str:
+        """Effective model for the default ``chat`` role (used by CAG keys)."""
+        return self.effective_model("chat")
+
+    def effective_model(self, role: ChatRole = "chat") -> str:
+        if self._runtime is not None:
+            return self._runtime.effective(role)
+        return self._default_model
+
+    def complete_json(
+        self,
+        *,
+        system: str,
+        user: str,
+        role: ChatRole = "chat",
+    ) -> dict[str, Any]:
+        model = self.effective_model(role)
         response = self._client.chat.completions.create(
-            model=self.model,
+            model=model,
             temperature=0.2,
             messages=[
                 {"role": "system", "content": system},

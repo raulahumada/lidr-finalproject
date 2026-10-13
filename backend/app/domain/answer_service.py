@@ -101,7 +101,7 @@ class AnswerService:
             )
 
         system, user = self._render_prompts(question=question, blocks=blocks)
-        raw = self.chat.complete_json(system=system, user=user)
+        raw = self.chat.complete_json(system=system, user=user, role="chat")
         answer_text = str(raw.get("answer") or "").strip() or NO_EVIDENCE_ANSWER
         citations = self._citations_from_model(blocks, raw)
 

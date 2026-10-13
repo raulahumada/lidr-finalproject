@@ -2,6 +2,27 @@
 
 Changelog of promoted changes in this monorepo.
 
+## 2026-10-13 — `add-ai-model-settings`
+
+**Status:** archived → `openspec/changes/archive/2026-10-13-add-ai-model-settings/`  
+**Surface:** both  
+**Synced to:** `openspec/specs/runtime-model-config/spec.md`, `openspec/specs/ai-settings-ui/spec.md`
+
+### What landed
+
+- Redis overrides por rol (`chat` / `composer` / `prompt_specialist`) + `GET/PUT /api/v1/config/models`
+- `ChatClient` resuelve modelo por llamada; UI `/settings`
+- Embedding read-only; allowlist `AVAILABLE_CHAT_MODELS`
+
+### Why
+
+Hot-swap de modelos sin `.env`/restart (paridad esencial con curso/Cris).
+
+### Follow-ups (out of this change)
+
+- Auth mínima
+- Multi-provider / API keys en UI
+
 ## 2026-10-13 — `add-ingest-console`
 
 **Status:** archived → `openspec/changes/archive/2026-10-13-add-ingest-console/`  
