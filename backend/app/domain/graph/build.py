@@ -1,4 +1,4 @@
-"""Wire the fixed Metropol agentic answer pipeline."""
+"""Wire the Metropol agentic answer graph (star + orchestrator hub)."""
 
 from __future__ import annotations
 
@@ -13,26 +13,36 @@ from app.domain.graph.agents import (
     source_guard,
 )
 from app.domain.graph.gate import escalation_gate
+from app.domain.graph.orchestrator import FALLBACK_LADDER, orchestrator
 from app.domain.graph.state import AgenticAnswerState
 
 log = logging.getLogger(__name__)
 
+AGENT_NODES = {
+    "intent_framer": intent_framer,
+    "corpus_fetcher": corpus_fetcher,
+    "grounded_composer": grounded_composer,
+    "source_guard": source_guard,
+}
+
 
 def build_agentic_answer_graph(checkpointer=None):
     builder = StateGraph(AgenticAnswerState)
-    builder.add_node("intent_framer", intent_framer)
-    builder.add_node("corpus_fetcher", corpus_fetcher)
-    builder.add_node("grounded_composer", grounded_composer)
-    builder.add_node("source_guard", source_guard)
+
+    builder.add_node(
+        "orchestrator",
+        orchestrator,
+        destinations=(*FALLBACK_LADDER, "escalation_gate"),
+    )
+    for name, fn in AGENT_NODES.items():
+        builder.add_node(name, fn)
     builder.add_node("escalation_gate", escalation_gate)
 
-    builder.add_edge(START, "intent_framer")
-    builder.add_edge("intent_framer", "corpus_fetcher")
-    builder.add_edge("corpus_fetcher", "grounded_composer")
-    builder.add_edge("grounded_composer", "source_guard")
-    builder.add_edge("source_guard", "escalation_gate")
+    builder.add_edge(START, "orchestrator")
+    for name in AGENT_NODES:
+        builder.add_edge(name, "orchestrator")
     builder.add_edge("escalation_gate", END)
 
     compiled = builder.compile(checkpointer=checkpointer)
-    log.info("agentic_answer_graph_built")
+    log.info("agentic_answer_graph_built topology=star agents=%s", list(AGENT_NODES))
     return compiled

@@ -42,6 +42,8 @@ class Settings(BaseSettings):
     # Conversation memory (agentic + session_id): sliding window + prompt budget.
     conversation_max_turns: int = 4
     conversation_memory_max_tokens: int = 1024
+    # Agentic orchestrator hub: max hub decisions per run (star topology).
+    agentic_orchestrator_max_steps: int = 10
 
     @property
     def cors_origins_list(self) -> list[str]:
