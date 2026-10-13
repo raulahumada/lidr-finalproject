@@ -214,6 +214,8 @@ Si confianza < `AGENTIC_CONFIDENCE_THRESHOLD` (default `0.55`), sin evidencia, o
 | Renombrar | `PATCH /api/v1/answer/session/{id}` `{"title":…}` |
 | Borrar | `DELETE /api/v1/answer/session/{id}` → 204 |
 
+**Ownership:** el BFF manda `X-Console-User` (Auth.js user id). Con header → cada operador ve solo sus sesiones (`owner_id`). Sin header (curl/eval) → solo sesiones *sin dueño* (`owner_id` null); create deja null. Sesión ajena → **404**.
+
 Pasá `session_id` opcional en `POST /answer/agentic` y `/answer/agentic/start`. Al terminar (`completed` / `rejected`, también tras resume) se appendea el turno al history. Sin `session_id`, el comportamiento anterior no cambia.
 
 **Tres conceptos distintos:**

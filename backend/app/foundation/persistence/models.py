@@ -69,10 +69,19 @@ class ConversationSessionRow(Base):
     """Durable chat session + JSON transcript (not a LangGraph thread)."""
 
     __tablename__ = "conversation_sessions"
-    __table_args__ = (Index("ix_conversation_sessions_updated_at", "updated_at"),)
+    __table_args__ = (
+        Index("ix_conversation_sessions_updated_at", "updated_at"),
+        Index(
+            "ix_conversation_sessions_owner_id_updated_at",
+            "owner_id",
+            "updated_at",
+        ),
+    )
 
     id: Mapped[str] = mapped_column(String(64), primary_key=True)
     title: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    # Auth.js / BFF X-Console-User id; null = unowned (scripts / pre-auth rows).
+    owner_id: Mapped[Optional[str]] = mapped_column(String(64), nullable=True)
     history: Mapped[List] = mapped_column(
         JSONB, nullable=False, server_default=text("'[]'::jsonb")
     )
