@@ -25,8 +25,12 @@ import {
   Plus,
   Search,
   Settings,
+  Users,
 } from "lucide-react";
 
+import type { Role } from "@/lib/auth/roles";
+
+import { SignOutButton } from "./sign-out-button";
 import { useChatSessions } from "../lib/chat-sessions-context";
 import type { SessionSummary } from "../lib/api/sessions";
 
@@ -143,9 +147,16 @@ function ChatSessionsNav() {
   );
 }
 
-export function AppShellLayout({ children }: { children: React.ReactNode }) {
+export function AppShellLayout({
+  children,
+  role = "usuario",
+}: {
+  children: React.ReactNode;
+  role?: Role;
+}) {
   const pathname = usePathname();
   const onChat = pathname.startsWith("/answer");
+  const isAdmin = role === "administrador";
   // autoSaveId reads localStorage on the client; enable only after mount
   // so SSR and the first client paint share defaultWidth (no hydration mismatch).
   const [sideNavPersistReady, setSideNavPersistReady] = useState(false);
@@ -197,24 +208,28 @@ export function AppShellLayout({ children }: { children: React.ReactNode }) {
               href="/answer"
               isSelected={onChat}
             />
-            <SideNavItem
-              label="Agentes"
-              icon={Network}
-              href="/agents"
-              isSelected={pathname.startsWith("/agents")}
-            />
+            {isAdmin ? (
+              <SideNavItem
+                label="Agentes"
+                icon={Network}
+                href="/agents"
+                isSelected={pathname.startsWith("/agents")}
+              />
+            ) : null}
             <SideNavItem
               label="Búsqueda"
               icon={Search}
               href="/search"
               isSelected={pathname.startsWith("/search")}
             />
-            <SideNavItem
-              label="Ingesta"
-              icon={Database}
-              href="/ingest"
-              isSelected={pathname.startsWith("/ingest")}
-            />
+            {isAdmin ? (
+              <SideNavItem
+                label="Ingesta"
+                icon={Database}
+                href="/ingest"
+                isSelected={pathname.startsWith("/ingest")}
+              />
+            ) : null}
           </SideNavSection>
 
           {onChat ? (
@@ -224,12 +239,23 @@ export function AppShellLayout({ children }: { children: React.ReactNode }) {
           ) : null}
 
           <SideNavSection title="Sistema">
-            <SideNavItem
-              label="Ajustes"
-              icon={Settings}
-              href="/settings"
-              isSelected={pathname.startsWith("/settings")}
-            />
+            {isAdmin ? (
+              <>
+                <SideNavItem
+                  label="Ajustes"
+                  icon={Settings}
+                  href="/settings"
+                  isSelected={pathname.startsWith("/settings")}
+                />
+                <SideNavItem
+                  label="Usuarios"
+                  icon={Users}
+                  href="/users"
+                  isSelected={pathname.startsWith("/users")}
+                />
+              </>
+            ) : null}
+            <SignOutButton />
           </SideNavSection>
         </SideNav>
       }

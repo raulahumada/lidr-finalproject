@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
 
-import { AppShellLayout } from "./components/app-shell";
 import { Providers } from "./providers";
 import "./globals.css";
 
@@ -12,9 +11,13 @@ export const metadata: Metadata = {
 const STONE_FONTS_HREF =
   "https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&family=Montserrat:wght@400;500;600;700&display=swap";
 
-export default function RootLayout({ children }: LayoutProps<"/">) {
+export default function RootLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
   return (
-    <html lang="es"  data-astryx-theme="stone">
+    <html lang="es" data-astryx-theme="stone">
       <head>
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link
@@ -25,9 +28,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
         <link rel="stylesheet" href={STONE_FONTS_HREF} />
       </head>
       <body>
-        <Providers>
-          <AppShellLayout>{children}</AppShellLayout>
-        </Providers>
+        <Providers>{children}</Providers>
       </body>
     </html>
   );

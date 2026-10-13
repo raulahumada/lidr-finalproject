@@ -37,7 +37,7 @@ import { Selector } from "@astryxdesign/core/Selector";
 import { Text } from "@astryxdesign/core/Text";
 import { TextArea } from "@astryxdesign/core/TextArea";
 
-import { AnswerApiError } from "../lib/api/answer";
+import { AnswerApiError } from "../../lib/api/answer";
 import {
   resumeAgenticAnswer,
   runAgenticWithProgress,
@@ -46,9 +46,9 @@ import {
   type GraphActivityEntry,
   type MetropolDomain,
   type RoutingHistoryEntry,
-} from "../lib/api/agentic";
-import { readAnswerSession, type HistoryTurn } from "../lib/api/sessions";
-import { useChatSessions } from "../lib/chat-sessions-context";
+} from "../../lib/api/agentic";
+import { readAnswerSession, type HistoryTurn } from "../../lib/api/sessions";
+import { useChatSessions } from "../../lib/chat-sessions-context";
 
 const SUGGESTIONS = [
   "¿Cómo es el handoff de cobranzas con Tenela?",

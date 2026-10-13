@@ -27,7 +27,7 @@ import { Text } from "@astryxdesign/core/Text";
 import { TextArea } from "@astryxdesign/core/TextArea";
 import { TextInput } from "@astryxdesign/core/TextInput";
 
-import { AnswerApiError } from "../lib/api/answer";
+import { AnswerApiError } from "../../../lib/api/answer";
 import {
   createAgentProfile,
   deleteAgentProfile,
@@ -35,7 +35,7 @@ import {
   updateAgentProfile,
   type AgentCatalogEntry,
   type AgentCatalogResponse,
-} from "../lib/api/agents";
+} from "../../../lib/api/agents";
 
 type PanelTab = "detalle" | "crear";
 
