@@ -110,6 +110,7 @@ class SessionStore:
         status: str,
         thread_id: str | None = None,
         resolved_question: str | None = None,
+        custom_notes: list[dict[str, Any]] | None = None,
     ) -> dict[str, Any]:
         if status not in {"completed", "rejected"}:
             raise ValueError(f"Cannot append non-terminal status: {status}")
@@ -127,10 +128,20 @@ class SessionStore:
                 }
             )
 
+        note_snapshots: list[dict[str, str]] = []
+        for item in custom_notes or []:
+            if not isinstance(item, dict):
+                continue
+            key = str(item.get("key") or "").strip()
+            note = str(item.get("note") or "").strip()
+            if key and note:
+                note_snapshots.append({"key": key, "note": note[:2000]})
+
         turn: dict[str, Any] = {
             "question": question,
             "answer": answer,
             "citations": citation_snapshots,
+            "custom_notes": note_snapshots,
             "status": status,
             "thread_id": thread_id,
             "created_at": _utcnow().isoformat(),

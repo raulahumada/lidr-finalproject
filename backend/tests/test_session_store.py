@@ -40,11 +40,13 @@ def test_store_create_append_and_auto_title() -> None:
         citations=[],
         status="completed",
         thread_id="abc123",
+        custom_notes=[{"key": "risk_advisor", "note": "cuidado con mora"}],
     )
     view = store.require(session_id)
     assert view["title"]
     assert len(view["history"]) == 1
     assert view["history"][0]["status"] == "completed"
+    assert view["history"][0]["custom_notes"][0]["key"] == "risk_advisor"
 
     store.append_turn(
         session_id,

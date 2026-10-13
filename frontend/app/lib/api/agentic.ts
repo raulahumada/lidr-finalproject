@@ -28,6 +28,11 @@ export type RoutingHistoryEntry = {
   source: string;
 };
 
+export type CustomAgentNote = {
+  key: string;
+  note: string;
+};
+
 export type AgenticResumeRequest = {
   decision: "approve" | "reject" | "adjust";
   note?: string;
@@ -55,6 +60,7 @@ export type AgenticAnswerResponse = {
   citations: Citation[];
   agent_trace: AgentTraceStep[];
   routing_history: RoutingHistoryEntry[];
+  custom_notes: CustomAgentNote[];
   review_reasons: string[];
   confidence: number | null;
   no_evidence: boolean;
@@ -84,6 +90,7 @@ export type AgenticProgressResponse = {
   citations: Citation[];
   agent_trace: AgentTraceStep[];
   routing_history: RoutingHistoryEntry[];
+  custom_notes: CustomAgentNote[];
   review_reasons: string[];
   confidence: number | null;
   no_evidence: boolean;
@@ -229,6 +236,7 @@ function progressToAnswer(
     citations: progress.citations || [],
     agent_trace: progress.agent_trace || [],
     routing_history: progress.routing_history || [],
+    custom_notes: progress.custom_notes || [],
     review_reasons: progress.review_reasons || [],
     confidence: progress.confidence,
     no_evidence: progress.no_evidence,

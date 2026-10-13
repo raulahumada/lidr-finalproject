@@ -43,6 +43,7 @@ class ActivityRun:
     result: dict[str, Any] | None = None
     error: str | None = None
     question: str | None = None
+    custom_notes: list[dict[str, str]] = field(default_factory=list)
 
 
 class GraphActivityLog:
@@ -57,6 +58,21 @@ class GraphActivityLog:
     def append(self, thread_id: str, node: str, label: str, message: str) -> None:
         run = self._runs.setdefault(thread_id, ActivityRun())
         run.entries.append(ActivityEntry(node=node, label=label, message=message))
+
+    def extend_custom_notes(
+        self, thread_id: str, notes: list[dict[str, Any]] | None
+    ) -> None:
+        """Accumulate custom agent notes for live progress while still running."""
+        if not notes:
+            return
+        run = self._runs.setdefault(thread_id, ActivityRun())
+        for item in notes:
+            if not isinstance(item, dict):
+                continue
+            key = str(item.get("key") or "").strip()
+            note = str(item.get("note") or "").strip()
+            if key and note:
+                run.custom_notes.append({"key": key, "note": note})
 
     def finish(
         self,
