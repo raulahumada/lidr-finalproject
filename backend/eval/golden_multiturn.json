@@ -1,0 +1,116 @@
+[
+  {
+    "id": "cobranzas-followup-tenela",
+    "notes": "Follow-up referencial: ¿y con Tenela? debe reescribirse con handoff/cobranzas.",
+    "turns": [
+      {
+        "question": "¿Cómo es el handoff de cobranzas?",
+        "domain": "cobranzas",
+        "expect_citations": true,
+        "must_mention": ["handoff"],
+        "expect_rewrite": false
+      },
+      {
+        "question": "¿y con Tenela?",
+        "expect_rewrite": true,
+        "expect_resolved_contains": ["handoff"],
+        "expect_citations": true,
+        "must_mention": ["tenela"]
+      }
+    ]
+  },
+  {
+    "id": "ventas-followup-eso",
+    "notes": "Demostrativo 'eso' sobre el proceso de ventas.",
+    "turns": [
+      {
+        "question": "¿Cómo se gestiona el proceso de ventas en Metropol?",
+        "domain": "ventas",
+        "expect_citations": true,
+        "expect_rewrite": false
+      },
+      {
+        "question": "¿y eso también aplica a WhatsApp?",
+        "expect_rewrite": true,
+        "expect_resolved_contains": ["ventas"],
+        "expect_citations": true,
+        "must_mention": ["whatsapp"]
+      }
+    ]
+  },
+  {
+    "id": "tenela-self-contained-second",
+    "notes": "Segundo turno autocontenido: no exige rewrite.",
+    "turns": [
+      {
+        "question": "¿Qué es el dictamen en Tenela?",
+        "domain": "tenela",
+        "expect_citations": true,
+        "must_mention": ["dictamen"],
+        "expect_rewrite": false
+      },
+      {
+        "question": "¿Cómo se verifica la identidad del cliente en Tenela?",
+        "domain": "tenela",
+        "expect_rewrite": false,
+        "expect_citations": true
+      }
+    ]
+  },
+  {
+    "id": "promesa-followup-mora",
+    "notes": "Follow-up corto tras promesa de pago.",
+    "turns": [
+      {
+        "question": "¿Qué es una promesa de pago en cobranzas?",
+        "domain": "cobranzas",
+        "expect_citations": true,
+        "must_mention": ["promesa"],
+        "expect_rewrite": false
+      },
+      {
+        "question": "¿y eso en tramos de mora?",
+        "expect_rewrite": true,
+        "expect_resolved_contains": ["promesa"],
+        "expect_citations": true
+      }
+    ]
+  },
+  {
+    "id": "omnicanal-followup-canales",
+    "notes": "Follow-up sobre canales omnicanal.",
+    "turns": [
+      {
+        "question": "¿Qué canales cubre la omnicanalidad de Metropol?",
+        "domain": "operacion",
+        "expect_citations": true,
+        "must_mention": ["whatsapp"],
+        "expect_rewrite": false
+      },
+      {
+        "question": "¿y el handoff humano en esos canales?",
+        "expect_rewrite": true,
+        "expect_citations": true,
+        "must_mention": ["humano"]
+      }
+    ]
+  },
+  {
+    "id": "scope-pin-then-question",
+    "notes": "Ancla de alcance + pregunta de contenido (rewrite no requerido en el pin).",
+    "turns": [
+      {
+        "question": "De acá en adelante solo hablemos de cobranzas",
+        "expect_rewrite": false,
+        "expect_citations": false,
+        "must_mention": ["cobranzas"]
+      },
+      {
+        "question": "¿Cuándo se escala a un humano?",
+        "expect_citations": true,
+        "must_mention": ["humano"],
+        "expect_rewrite": false
+      }
+    ]
+  }
+]

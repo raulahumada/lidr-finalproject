@@ -167,6 +167,7 @@ def answer_agentic_progress(
         thread_id=thread_id,
         activity=activity,
         question=result.get("question") or run.question,
+        resolved_question=result.get("resolved_question"),
         domain=result.get("domain"),
         answer=result.get("answer"),
         citations=citations,

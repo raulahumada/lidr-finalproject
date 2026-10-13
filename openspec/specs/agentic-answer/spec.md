@@ -154,3 +154,10 @@ Agentic completed, paused, and rejected payloads SHALL include `custom_notes`: a
 #### Scenario: Empty when no customs
 - **WHEN** an agentic run completes with no custom notes in state
 - **THEN** `custom_notes` is an empty list
+
+### Requirement: Agentic outcomes expose resolved_question when rewritten
+When conversation resolution rewrites the written question for retrieval, agentic completed/paused/rejected payloads SHALL include `resolved_question` with that resolved text. When no rewrite occurred, `resolved_question` MAY be null or omitted. Progress payloads for terminal runs SHOULD include the same field when present on the stored result.
+
+#### Scenario: Rewrite present on payload
+- **WHEN** an agentic run bound to a session rewrites a referential follow-up
+- **THEN** the response includes a `resolved_question` distinct from the written question

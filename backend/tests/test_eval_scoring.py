@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from eval.scoring import score_case
+from eval.scoring import score_case, score_multiturn_turn
 
 
 def test_citations_expected_pass() -> None:
@@ -96,5 +96,74 @@ def test_expect_no_evidence() -> None:
             "citations": [],
             "no_evidence": True,
         },
+    )
+    assert result["passed"] is True
+
+
+def test_multiturn_expect_rewrite_false_negative() -> None:
+    written = "¿y con Tenela?"
+    fail = score_multiturn_turn(
+        {
+            "id": "t1",
+            "question": written,
+            "expect_rewrite": True,
+            "expect_citations": True,
+        },
+        {
+            "status": "completed",
+            "answer": "Tenela.",
+            "citations": [{"chunk_id": 1}],
+            "citations_valid": True,
+            "resolved_question": written,
+        },
+        written_question=written,
+    )
+    assert fail["passed"] is False
+    assert any("rewrite" in r for r in fail["reasons"])
+
+    missing = score_multiturn_turn(
+        {"question": written, "expect_rewrite": True},
+        {"status": "completed", "answer": "x", "resolved_question": None},
+        written_question=written,
+    )
+    assert missing["passed"] is False
+    assert any("rewrite" in r for r in missing["reasons"])
+
+
+def test_multiturn_expect_rewrite_pass_and_contains() -> None:
+    written = "¿y con Tenela?"
+    resolved = "¿y con Tenela? (sobre handoff de cobranzas)"
+    ok = score_multiturn_turn(
+        {
+            "question": written,
+            "expect_rewrite": True,
+            "expect_resolved_contains": ["handoff"],
+            "expect_citations": True,
+            "must_mention": ["tenela"],
+        },
+        {
+            "status": "completed",
+            "answer": "Handoff con Tenela.",
+            "citations": [{"chunk_id": 1}],
+            "citations_valid": True,
+            "resolved_question": resolved,
+        },
+        written_question=written,
+    )
+    assert ok["passed"] is True
+
+
+def test_multiturn_no_rewrite_expected() -> None:
+    q = "¿Cómo se verifica la identidad en Tenela?"
+    result = score_multiturn_turn(
+        {"question": q, "expect_rewrite": False, "expect_citations": True},
+        {
+            "status": "completed",
+            "answer": "Identidad en Tenela.",
+            "citations": [{"chunk_id": 2}],
+            "citations_valid": True,
+            "resolved_question": None,
+        },
+        written_question=q,
     )
     assert result["passed"] is True
