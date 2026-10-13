@@ -21,6 +21,7 @@ from app.generation.cag.exact import ExactAnswerCache
 from app.generation.cag.semantic import SemanticAnswerCache
 from app.generation.rag.embedder import OpenAIEmbedder
 from app.generation.rag.retriever import SemanticRetriever
+from app.ingestion.jobs import IngestJobRegistry
 
 log = logging.getLogger(__name__)
 
@@ -102,6 +103,11 @@ def get_answer_service() -> Optional[AnswerService]:
 @lru_cache
 def get_activity_log() -> GraphActivityLog:
     return GraphActivityLog()
+
+
+@lru_cache
+def get_ingest_job_registry() -> IngestJobRegistry:
+    return IngestJobRegistry()
 
 
 @lru_cache

@@ -4,10 +4,16 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from sqlalchemy import Row, select
+from sqlalchemy import Row, func, select
 from sqlalchemy.orm import Session
 
 from app.foundation.persistence.models import ChunkRow, DocumentRow
+
+
+@dataclass(frozen=True)
+class CorpusCounts:
+    document_count: int
+    chunk_count: int
 
 
 @dataclass(frozen=True)
@@ -23,6 +29,16 @@ class RankedChunk:
 
 
 class ChunkStore:
+    def count_corpus(self, session: Session) -> CorpusCounts:
+        documents = session.execute(
+            select(func.count()).select_from(DocumentRow)
+        ).scalar_one()
+        chunks = session.execute(select(func.count()).select_from(ChunkRow)).scalar_one()
+        return CorpusCounts(
+            document_count=int(documents or 0),
+            chunk_count=int(chunks or 0),
+        )
+
     def find_document_id(self, session: Session, source_path: str) -> int | None:
         stmt = select(DocumentRow.id).where(DocumentRow.source_path == source_path)
         return session.execute(stmt).scalar_one_or_none()
