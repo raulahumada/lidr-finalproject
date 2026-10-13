@@ -2,6 +2,28 @@
 
 Changelog of promoted changes in this monorepo.
 
+## 2026-10-13 — `add-ingest-console`
+
+**Status:** archived → `openspec/changes/archive/2026-10-13-add-ingest-console/`  
+**Surface:** both  
+**Synced to:** `openspec/specs/corpus-ingest/spec.md`, `openspec/specs/ingest-console-ui/spec.md`
+
+### What landed
+
+- HTTP `POST/GET /api/v1/ingest/runs` + `GET /ingest/stats` over existing `run_ingest` (in-process jobs, 409 busy)
+- Consola Astryx `/ingest` (stats, force, poll, CTA a `/search`) + SideNav/home
+- CLI intacto; docs en `AGENTS.md` / `frontend/AGENTS.md`
+
+### Why
+
+Paridad demo con consola peer (index runs) sin terminal; cierra el hueco Graphify CLI → API.
+
+### Follow-ups (out of this change)
+
+- AI settings / model router
+- Auth mínima
+- Upload de archivo (lab) y jobs durables
+
 ## 2026-10-13 — `add-agentic-live-progress`
 
 **Status:** archived → `openspec/changes/archive/2026-10-13-add-agentic-live-progress/`  

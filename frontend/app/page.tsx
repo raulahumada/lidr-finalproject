@@ -41,11 +41,12 @@ export default function Home() {
                 href="/agents"
               />
               <Button label="Búsqueda" variant="ghost" href="/search" />
+              <Button label="Ingesta" variant="ghost" href="/ingest" />
             </HStack>
 
             <Text type="supporting" color="secondary">
-              Chat = respuesta grounded · Búsqueda = hits del corpus · Agentes =
-              ladder y customs
+              Chat = respuesta grounded · Búsqueda = hits · Ingesta = índice ·
+              Agentes = ladder y customs
             </Text>
           </VStack>
         </LayoutContent>

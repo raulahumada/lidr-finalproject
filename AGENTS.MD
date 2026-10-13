@@ -61,6 +61,7 @@ Stack: FastAPI, Uvicorn, Pydantic Settings, python-dotenv.
 | `app/api/routes/health.py` | `GET /api/v1/health` |
 | `app/api/routes/items.py` | CRUD `/api/v1/items` en memoria |
 | `app/api/routes/search.py` | `POST /api/v1/search` (semántico sobre chunks) |
+| `app/api/routes/ingest.py` | `POST/GET /api/v1/ingest/*` (runs + stats; jobs in-process) |
 | `app/foundation/persistence/` | SQLAlchemy engine, modelos `documents`/`chunks`, store |
 | `app/generation/rag/` | Embedder OpenAI, retriever, seed fixture |
 | `app/schemas/` | Contratos Pydantic (items, search) |
@@ -117,6 +118,21 @@ source .venv/bin/activate
 python -m app.ingestion.run_ingest
 # re-ingerir (p. ej. después de upgrade de chunking):
 python -m app.ingestion.run_ingest --force
+```
+
+Misma ingesta por HTTP (consola `/ingest` o curl). Jobs **in-process** (se pierden al reload de Uvicorn; un run a la vez → 409):
+
+```bash
+# stats del índice
+curl -s http://localhost:8000/api/v1/ingest/stats | python3 -m json.tool
+
+# start (force opcional)
+RUN=$(curl -s -X POST http://localhost:8000/api/v1/ingest/runs \
+  -H 'Content-Type: application/json' \
+  -d '{"force":false}' | python3 -c 'import sys,json; print(json.load(sys.stdin)["run_id"])')
+
+# poll hasta completed|failed
+curl -s "http://localhost:8000/api/v1/ingest/runs/${RUN}" | python3 -m json.tool
 ```
 
 Ejemplo de búsqueda:
@@ -262,7 +278,7 @@ Scripts: `dev`, `build`, `start`, `lint`.
 ## Estado actual / gaps
 
 - Sin package/workspace root; cada carpeta se instala y corre por separado.
-- RAG: Alembic + `POST /api/v1/search` + ingest + `POST /answer` + `POST /answer/agentic` (+ `/start` + `/progress` + chat sessions + conversation memory con facts/anchors); Postgres checkpointer + activity log in-process; follow-up: orchestrator.
+- RAG: Alembic + `POST /api/v1/search` + ingest CLI/HTTP (`/api/v1/ingest/*` + UI `/ingest`) + `POST /answer` + `POST /answer/agentic` (+ `/start` + `/progress` + chat sessions + conversation memory con facts/anchors); Postgres checkpointer + activity log in-process; follow-up: orchestrator / AI settings / auth.
 - Items CRUD sigue en memoria.
 - Front chat agentic multi-sesión en `/answer` (Astryx); sin package de tipos compartidos monorepo.
 
