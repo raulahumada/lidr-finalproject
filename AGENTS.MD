@@ -210,6 +210,24 @@ curl -s http://localhost:8000/api/v1/answer/agentic/<thread_id>/resume \
 
 Tests: `cd backend && .venv/bin/python -m pytest -q`.
 
+### Eval harness (agentic, no CI)
+
+Golden set + scoring determinista (citas / mentions / pause / `no_evidence`). **No** RAGAS; **no** corre en pytest por defecto (gasta tokens).
+
+Prerrequisitos: Postgres + Redis up, `OPENAI_API_KEY`, corpus ingerido, API en `:8000`.
+
+```bash
+cd backend && source .venv/bin/activate
+# smoke un caso:
+python -m eval.run_eval --base-url http://localhost:8000 --limit 1
+# caso concreto + auto-approve si pausa el gate humano:
+python -m eval.run_eval --case cobranzas-handoff-tenela --auto-approve
+# set completo → report en eval/reports/report-*.json (gitignored)
+python -m eval.run_eval
+```
+
+Scorer offline: `pytest -q tests/test_eval_scoring.py`.
+
 ## Frontend (`frontend/`)
 
 Stack: Next.js `16.3.5` (App Router), React `19.2.8`, TypeScript, Tailwind CSS 4, ESLint.

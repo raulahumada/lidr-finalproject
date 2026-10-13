@@ -1,0 +1,80 @@
+[
+  {
+    "id": "cobranzas-handoff-tenela",
+    "question": "¿Cómo es el handoff de cobranzas con Tenela?",
+    "domain": "cobranzas",
+    "expect_citations": true,
+    "must_mention": ["tenela"],
+    "notes": "Pregunta canónica demo; espera evidencia y mención de Tenela."
+  },
+  {
+    "id": "tenela-dictamen",
+    "question": "¿Qué es el dictamen en Tenela y cuándo se obtiene?",
+    "domain": "tenela",
+    "expect_citations": true,
+    "must_mention": ["dictamen"],
+    "notes": "Core Tenela; soft on exact procedure wording."
+  },
+  {
+    "id": "omnicanalidad-canales",
+    "question": "¿Qué canales cubre la omnicanalidad de Metropol?",
+    "domain": "operacion",
+    "expect_citations": true,
+    "must_mention": ["whatsapp"],
+    "notes": "Operación/omnicanal; WhatsApp suele aparecer en corpus."
+  },
+  {
+    "id": "ventas-proceso",
+    "question": "¿Cómo se gestiona el proceso de ventas en Metropol?",
+    "domain": "ventas",
+    "expect_citations": true,
+    "notes": "Dominio ventas; citas esperadas si el corpus está ingerido."
+  },
+  {
+    "id": "promesa-pago-cobranzas",
+    "question": "¿Qué es una promesa de pago en cobranzas?",
+    "domain": "cobranzas",
+    "expect_citations": true,
+    "must_mention": ["promesa"],
+    "notes": "Vocabulario cobranzas."
+  },
+  {
+    "id": "identidad-cliente",
+    "question": "¿Cómo se verifica la identidad del cliente en los flujos Metropol?",
+    "domain": "tenela",
+    "expect_citations": true,
+    "notes": "Puede mezclar Tenela/ventas; exige citas, no procedimiento inventado."
+  },
+  {
+    "id": "out-of-corpus-avionics",
+    "question": "¿Cuál es el protocolo de certificación aviónica DO-178C de Metropol Fintech?",
+    "expect_citations": false,
+    "expect_no_evidence": true,
+    "must_not_mention": ["do-178c aprobado", "certificación otorgada"],
+    "notes": "Fuera de corpus; no debe inventar certificación. Puede pausar por no_evidence."
+  },
+  {
+    "id": "out-of-corpus-crypto",
+    "question": "¿Metropol ofrece staking de criptomonedas con APY garantizado del 40%?",
+    "expect_citations": false,
+    "expect_no_evidence": true,
+    "must_not_mention": ["40%", "apy garantizado"],
+    "notes": "Pregunta inventada; abstención / sin evidencia."
+  },
+  {
+    "id": "tenela-api-inventada",
+    "question": "¿Cuál es el endpoint REST exacto POST /v9/tenela/magic-loan para simular préstamos?",
+    "domain": "tenela",
+    "expect_citations": false,
+    "must_not_mention": ["/v9/tenela/magic-loan"],
+    "notes": "No inventar endpoints; si hay respuesta, no debe citar esa ruta inventada."
+  },
+  {
+    "id": "handoff-humano",
+    "question": "¿Cuándo se debe escalar a un humano en cobranzas?",
+    "domain": "cobranzas",
+    "expect_citations": true,
+    "must_mention": ["humano"],
+    "notes": "Handoff / escalamiento; soft substring."
+  }
+]
