@@ -16,23 +16,24 @@ Monorepo de dos proyectos, el layout que fija el programa:
 
 | | qué es | stack | se despliega en |
 |---|---|---|---|
-| [`backend/`](backend/README.md) | ingesta, chunking, embeddings, retrieval, answer sync/agentic, CAG, LangGraph | Python · FastAPI · pgvector · Redis | Railway |
-| [`frontend/`](frontend/README.md) | consola: login, chat agentic, búsqueda, ingesta, agentes, users | Next.js · Auth.js · Prisma · Astryx | Vercel |
+| [`backend/`](backend/README.md) | ingesta, chunking, embeddings, retrieval, answer sync/agentic, CAG, LangGraph, **ledger de tokens** | Python · FastAPI · pgvector · Redis | Railway |
+| [`frontend/`](frontend/README.md) | consola: login, chat agentic, búsqueda, ingesta, agentes, users, **uso** | Next.js · Auth.js · Prisma · Astryx | Vercel |
 
 ## Arquitectura
 
 ```mermaid
 flowchart LR
-    UI["frontend (Next.js)<br/>Búsqueda · Chat agentic · Ingesta · Agentes"]
+    UI["frontend (Next.js)<br/>Búsqueda · Chat · Ingesta · Agentes · Uso"]
 
     subgraph API["backend (FastAPI)"]
         RET["POST /search<br/>retriever semántico"]
         GEN["POST /answer<br/>prompt v2 + LLM + citas"]
         ORCH["POST /answer/agentic<br/>orchestrator star → especialistas"]
+        USAGE["GET /usage/summary<br/>ledger tokens"]
         GATE{{"escalation_gate<br/>pausa si hace falta"}}
     end
 
-    PG[("Postgres + pgvector<br/>documents, chunks, sessions")]
+    PG[("Postgres + pgvector<br/>documents, chunks, sessions, llm_usage_events")]
     AUTH[("Postgres auth<br/>Prisma / Auth.js")]
     REDIS[("Redis Stack<br/>Response CAG")]
 
@@ -41,11 +42,14 @@ flowchart LR
     UI -->|"GET/POST vía BFF"| RET
     UI -->|"POST /answer"| GEN
     UI -->|"POST /answer/agentic (/start|/resume)"| ORCH
+    UI -->|"GET /usage/summary"| USAGE
     RET --> PG
     GEN -->|reusa| RET
     GEN --> REDIS
+    GEN -->|asiento tokens| PG
     ORCH -->|reusa| GEN
     ORCH --> PG
+    USAGE --> PG
     ORCH -.confianza baja · sin evidencia · citas inválidas.-> GATE
     GATE -.humano aprueba/rechaza/ajusta, HTTP 202 → resume.-> ORCH
 ```

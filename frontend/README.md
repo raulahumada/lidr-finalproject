@@ -1,6 +1,6 @@
 # Entrega LiDR — consola (frontend)
 
-Consola Next.js para el RAG multiagente Metropol: login, chat agentic multi-sesión, search, ingest, catálogo de agentes, users/settings admin.
+Consola Next.js para el RAG multiagente Metropol: login, chat agentic multi-sesión, search, ingest, catálogo de agentes, users/settings, **uso de tokens** admin.
 
 Uno de los dos proyectos del monorepo; el otro es `backend/`. Portada: [README de la raíz](../README.md).
 
@@ -68,13 +68,18 @@ app/
 │       ├── agents/           # catálogo + customs
 │       ├── ingest/
 │       ├── users/
-│       └── settings/         # runtime chat models
+│       ├── settings/         # runtime chat models
+│       └── usage/            # ledger tokens (admin)
 ├── api/auth/[...nextauth]    # Auth.js
-└── api/v1/*                  # BFF → FastAPI
-lib/auth/                     # roles, guards
+└── api/v1/*                  # BFF → FastAPI (incl. /usage admin-only)
+lib/auth/                     # roles, guards (`/usage`, `/api/v1/usage`)
 lib/ai-service/               # relay Bearer + X-Console-User
-app/lib/api/                  # clients tipados (answer, agentic, sessions, …)
+app/lib/api/                  # clients tipados (answer, agentic, sessions, usage, …)
 ```
+
+### Uso de tokens (`/usage`)
+
+Solo `administrador` (SideNav **Sistema → Uso**). Lee `GET /api/v1/usage/summary` vía BFF: totales + por modelo; filtros fecha / purpose / `session_id`. Sin columna USD. Detalle del ledger: [`backend/README.md`](../backend/README.md) y [`AGENTS.md`](../AGENTS.md).
 
 ## Despliegue (Vercel)
 

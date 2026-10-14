@@ -2,6 +2,22 @@
 
 Changelog of promoted changes in this monorepo.
 
+## 2026-10-14 — `add-llm-usage-accounting`
+
+**Status:** implemented on `finalproject-RA` (archive/sync to main specs pending `/opsx-archive`)  
+**Surface:** both  
+**Delta under:** `openspec/changes/add-llm-usage-accounting/`
+
+### What landed
+
+- Provider-reported tokens on `ChatClient.complete_json` → Postgres `llm_usage_events` (fail-open)
+- `usage` on sync/agentic/progress payloads; `GET /api/v1/usage/summary` (totales + `by_model`)
+- Consola admin `/usage` + gates BFF; **sin USD**; embeddings fuera de alcance
+
+### Why
+
+Auditar gasto de chat sin depender del dashboard de OpenAI (paridad Cristian).
+
 ## 2026-10-13 — `add-ai-model-settings`
 
 **Status:** archived → `openspec/changes/archive/2026-10-13-add-ai-model-settings/`  
