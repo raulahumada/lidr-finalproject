@@ -18,7 +18,6 @@ import { VStack } from "@astryxdesign/core/Layout";
 import {
   Box,
   Database,
-  Folder,
   Home,
   MessageSquare,
   Network,
@@ -195,12 +194,6 @@ export function AppShellLayout({
               icon={Home}
               href="/"
               isSelected={pathname === "/"}
-            />
-            <SideNavItem
-              label="Items"
-              icon={Folder}
-              href="/items"
-              isSelected={pathname.startsWith("/items")}
             />
             <SideNavItem
               label="Chat"

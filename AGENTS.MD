@@ -70,13 +70,12 @@ Stack: FastAPI, Uvicorn, Pydantic Settings, python-dotenv.
 | `app/dependencies.py` | Composition root (retriever, etc.) |
 | `app/api/router.py` | Agrega routers de rutas |
 | `app/api/routes/health.py` | `GET /api/v1/health` |
-| `app/api/routes/items.py` | CRUD `/api/v1/items` en memoria |
 | `app/api/routes/search.py` | `POST /api/v1/search` (semántico sobre chunks) |
 | `app/api/routes/ingest.py` | `POST/GET /api/v1/ingest/*` (runs + stats; jobs in-process) |
 | `app/api/routes/config_models.py` | `GET/PUT /api/v1/config/models` (runtime chat roles; Redis) |
 | `app/foundation/persistence/` | SQLAlchemy engine, modelos `documents`/`chunks`, store |
 | `app/generation/rag/` | Embedder OpenAI, retriever, seed fixture |
-| `app/schemas/` | Contratos Pydantic (items, search) |
+| `app/schemas/` | Contratos Pydantic (search, answer, session, …) |
 | `alembic/` | Migraciones (pgvector chunks) |
 | `.env.example` | Plantilla de env |
 
@@ -85,8 +84,6 @@ API prefix por defecto: `/api/v1`. Docs: `/docs`.
 CORS por defecto: `http://localhost:3000`, `http://localhost:5173`.
 
 **Python:** 3.10+ (recomendado 3.12 vía Homebrew). Crear venv: `cd backend && python3.12 -m venv .venv && source .venv/bin/activate && pip install -r requirements.txt`.
-
-**Items:** store en memoria (`dict`); se pierde al reiniciar.
 
 **RAG (chunks + search):** tablas `documents` / `chunks` vía Alembic; embeddings `text-embedding-3-small` (1536-d). Sin `OPENAI_API_KEY`, search responde **503**. Corpus vacío → **200** con `results: []`.
 
@@ -310,7 +307,6 @@ Scripts: `dev`, `build`, `start`, `lint`, `db:migrate`, `db:generate`, `seed:adm
 
 - Sin package/workspace root; cada carpeta se instala y corre por separado.
 - RAG + agentic + sessions + ownership + dual auth + ingest console cableados (ver README).
-- Items CRUD de demo sigue en memoria.
 - Activity/progress agentic in-process (checkpointer Postgres sí sobrevive redeploy).
 - Deploy: Railway (`backend/Dockerfile`) + Vercel (`frontend/`) — ver `docs/deploy-railway-vercel.md`.
 
@@ -320,7 +316,7 @@ Scripts: `dev`, `build`, `start`, `lint`, `db:migrate`, `db:generate`, `seed:adm
 2. Antes de UI nueva: seguir el workflow de Astryx en `frontend/AGENTS.md` (`astryx build`, templates, components). No inventar layout con `<div>` + CSS a mano.
 3. Next.js 16 puede diferir del entrenamiento: consultar docs bajo `frontend/node_modules/next/dist/docs/` cuando haga falta.
 4. No commitear `.env` del backend; usar `.env.example` como referencia.
-5. Preferir extender el CRUD de items / health existentes antes de crear routers o stores paralelos, salvo que el usuario pida otra cosa.
+5. Preferir extender routers/schemas existentes (`search`, `answer`, `session`, …) antes de crear superficies paralelas, salvo que el usuario pida otra cosa.
 6. Documentación de agente de producto vive aquí; reglas específicas de front viven en `frontend/AGENTS.md`.
 7. Cambios alineados a la arquitectura del curso: `/opsx-prespec` (draft + sync referencia + surface front|back|both → OpenSpec propose). Implementar con `/opsx-apply`.
 8. Backend Python: seguir y contrastar `docs/python-best-practices.md` en `/opsx-propose` y `/opsx-prespec` (sección Practices check).

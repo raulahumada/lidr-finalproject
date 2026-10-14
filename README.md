@@ -151,7 +151,6 @@ El corpus del cliente y los `.env` reales están gitignoreados. El repo trae el 
 ## Limitaciones conocidas
 
 - Activity/progress log agentic es **in-process** (se pierde al redeploy; pause/resume del checkpointer Postgres sí sobrevive).
-- Items CRUD de demo sigue en memoria.
 - Google OAuth deferido; consola = credentials + alta admin.
 - Quien tenga el `SERVICE_TOKEN` puede llamar al API sin tope de gasto por usuario.
 - Un commit que toca un solo lado puede redesplegar el otro si no se configuran Watch Paths (Railway) / Ignored Build Step (Vercel).

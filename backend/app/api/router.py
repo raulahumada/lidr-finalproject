@@ -18,13 +18,11 @@ from app.api.routes import (
     config_models,
     health,
     ingest,
-    items,
     search,
 )
 
 api_router = APIRouter()
 api_router.include_router(health.router)
-api_router.include_router(items.router)
 api_router.include_router(search.router)
 api_router.include_router(ingest.router)
 api_router.include_router(config_models.router)

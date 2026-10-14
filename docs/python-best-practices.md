@@ -71,7 +71,7 @@ Si una pieza no encaja, decidir capa (y documentar) antes de crear una carpeta s
 
 ## 4. Schemas (Pydantic v2)
 
-- Separar **Create / Update / response** (como `ItemCreate`, `ItemUpdate`, `Item`).
+- Separar **Create / Update / response** (p. ej. perfiles de agente o session DTOs).
 - `Field(...)` con `min_length` / `max_length` donde aplique.
 - Update parcial: campos `T | None = None` + `model_dump(exclude_unset=True)` + `model_copy(update=...)`.
 - `ConfigDict(from_attributes=True)` en modelos de salida cuando vengan de ORM/objetos.
@@ -92,10 +92,10 @@ Si una pieza no encaja, decidir capa (y documentar) antes de crear una carpeta s
 ## 6. Estilo Python
 
 - Python 3.10+ syntax del repo: `str | None`, `list[Item]`, `dict[int, Item]` (no `Optional`/`List`/`Dict` de `typing` salvo necesidad).
-- Imports absolutos desde `app.` (`from app.schemas.item import Item`).
+- Imports absolutos desde `app.` (`from app.schemas.search import SearchResponse`).
 - Funciones/módulos pequeños; nombres descriptivos en `snake_case`.
 - Sin lógica de negocio en `__init__.py` (paquetes marcadores).
-- Evitar `global` salvo stores temporales documentados (hoy: items en memoria); al persistir, sustituir por capa de persistencia.
+- Evitar `global` salvo caches/registros in-process documentados (p. ej. ingest jobs); al persistir, sustituir por capa de persistencia.
 
 ---
 
