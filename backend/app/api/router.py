@@ -19,6 +19,7 @@ from app.api.routes import (
     health,
     ingest,
     search,
+    usage,
 )
 
 api_router = APIRouter()
@@ -31,3 +32,4 @@ api_router.include_router(answer_agentic.router)
 api_router.include_router(answer_agents.router)
 api_router.include_router(answer_session.router)
 api_router.include_router(answer_session.list_router)
+api_router.include_router(usage.router)

@@ -4,6 +4,8 @@ from typing import Any, Literal
 
 from pydantic import BaseModel, Field
 
+from app.schemas.usage import TokenUsage
+
 
 class AnswerRequest(BaseModel):
     question: str = Field(..., min_length=1, max_length=4000)
@@ -31,3 +33,4 @@ class AnswerResponse(BaseModel):
     k: int
     latency_ms: int
     no_evidence: bool = False
+    usage: TokenUsage = Field(default_factory=TokenUsage)

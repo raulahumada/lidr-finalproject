@@ -10,6 +10,14 @@ from typing import Any
 from openai import OpenAI
 
 from app.foundation.llm.runtime_config import ChatRole, RuntimeModelConfig
+from app.foundation.llm.usage import (
+    Usage,
+    UsageRecorder,
+    current_run_context,
+    extract_usage_from_response,
+    purpose_for_role,
+    set_last_usage,
+)
 
 log = logging.getLogger(__name__)
 
@@ -23,10 +31,13 @@ class ChatClient:
         *,
         model: str,
         runtime: RuntimeModelConfig | None = None,
+        recorder: UsageRecorder | None = None,
     ) -> None:
         self._client = client
         self._default_model = model
         self._runtime = runtime
+        self._recorder = recorder
+        self.last_usage: Usage = Usage.unreported()
 
     @property
     def model(self) -> str:
@@ -55,6 +66,13 @@ class ChatClient:
             ],
             response_format={"type": "json_object"},
         )
+        usage = extract_usage_from_response(response)
+        if not usage.reported:
+            log.warning("llm_usage_missing model=%s role=%s", model, role)
+        self.last_usage = usage
+        set_last_usage(usage)
+        self._maybe_record(purpose=purpose_for_role(role), model=model, usage=usage)
+
         content = (response.choices[0].message.content or "").strip()
         try:
             return json.loads(content)
@@ -63,3 +81,23 @@ class ChatClient:
             if not match:
                 raise
             return json.loads(match.group(0))
+
+    def _maybe_record(self, *, purpose: str, model: str, usage: Usage) -> None:
+        if self._recorder is None:
+            return
+        ctx = current_run_context()
+        try:
+            self._recorder.record(
+                purpose=purpose,
+                model=model,
+                usage=usage,
+                session_id=ctx.session_id if ctx else None,
+                thread_id=ctx.thread_id if ctx else None,
+                owner_id=ctx.owner_id if ctx else None,
+            )
+        except Exception:  # noqa: BLE001
+            log.exception(
+                "llm_usage_record_failed purpose=%s model=%s",
+                purpose,
+                model,
+            )

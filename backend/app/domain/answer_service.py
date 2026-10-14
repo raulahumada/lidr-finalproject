@@ -8,6 +8,7 @@ from typing import Any
 
 from app.domain.grounding import NO_EVIDENCE_ANSWER
 from app.foundation.llm.chat import ChatClient
+from app.foundation.llm.usage import Usage
 from app.foundation.prompts.loader import render_answer_prompts
 from app.generation.cag.exact import ExactAnswerCache
 from app.generation.cag.semantic import SemanticAnswerCache
@@ -16,6 +17,7 @@ from app.generation.rag.knowledge_pack import get_default_knowledge_pack
 from app.generation.rag.retriever import SemanticRetriever
 from app.schemas.answer import AnswerResponse, Citation
 from app.schemas.search import SearchHit
+from app.schemas.usage import TokenUsage
 
 log = logging.getLogger(__name__)
 
@@ -83,6 +85,7 @@ class AnswerService:
                 k=resolved_k,
                 latency_ms=self._elapsed_ms(started),
                 no_evidence=True,
+                usage=self._token_usage(Usage.unreported()),
             )
 
         blocks = fit_to_budget(
@@ -98,6 +101,7 @@ class AnswerService:
                 k=resolved_k,
                 latency_ms=self._elapsed_ms(started),
                 no_evidence=True,
+                usage=self._token_usage(Usage.unreported()),
             )
 
         system, user = self._render_prompts(question=question, blocks=blocks)
@@ -114,8 +118,13 @@ class AnswerService:
             k=resolved_k,
             latency_ms=self._elapsed_ms(started),
             no_evidence=False,
+            usage=self._token_usage(
+                getattr(self.chat, "last_usage", None) or Usage.unreported()
+            ),
         )
         payload = response.model_dump()
+        # Cached bodies must not replay billed usage on a later hit.
+        payload["usage"] = TokenUsage().model_dump()
         if self.exact_cache is not None:
             self.exact_cache.set(cache_key, payload)
         if self.semantic_cache is not None:
@@ -222,7 +231,18 @@ class AnswerService:
         data["cached"] = cached
         data["latency_ms"] = self._elapsed_ms(started)
         data.setdefault("prompt_version", self.prompt_version)
+        # Cache hits never bill — always unreported zeros.
+        data["usage"] = TokenUsage().model_dump()
         return AnswerResponse.model_validate(data)
+
+    @staticmethod
+    def _token_usage(usage: Usage) -> TokenUsage:
+        return TokenUsage(
+            input_tokens=usage.input_tokens,
+            output_tokens=usage.output_tokens,
+            total_tokens=usage.total_tokens,
+            reported=usage.reported,
+        )
 
 
 def build_knowledge_pack(max_tokens: int) -> str:

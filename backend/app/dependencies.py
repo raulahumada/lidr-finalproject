@@ -26,6 +26,7 @@ from app.foundation.llm.chat import ChatClient
 from app.foundation.llm.runtime_config import RuntimeModelConfig
 from app.foundation.persistence.database import get_session_factory
 from app.foundation.persistence.repository import ChunkStore
+from app.foundation.persistence.usage import UsageStore
 from app.generation.conversation.store import SessionStore
 from app.generation.cag.exact import ExactAnswerCache
 from app.generation.cag.semantic import SemanticAnswerCache
@@ -88,6 +89,7 @@ def get_answer_service() -> Optional[AnswerService]:
         client,
         model=settings.chat_model,
         runtime=get_runtime_model_config(),
+        recorder=get_usage_store(),
     )
 
     exact: ExactAnswerCache | None = None
@@ -136,6 +138,11 @@ def get_session_store() -> SessionStore:
     return SessionStore(get_session_factory())
 
 
+@lru_cache
+def get_usage_store() -> UsageStore:
+    return UsageStore(session_factory=get_session_factory())
+
+
 def get_agentic_answer_runner() -> Optional[AgenticAnswerRunner]:
     settings = get_settings()
     if not settings.embeddings_configured:
@@ -151,6 +158,7 @@ def get_agentic_answer_runner() -> Optional[AgenticAnswerRunner]:
         client,
         model=settings.chat_model,
         runtime=get_runtime_model_config(),
+        recorder=get_usage_store(),
     )
     return AgenticAnswerRunner(
         retriever=retriever,

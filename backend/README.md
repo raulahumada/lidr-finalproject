@@ -103,6 +103,15 @@ curl -s http://localhost:8000/api/v1/answer/agentic \
 
 Si `SERVICE_TOKEN` está seteado, todas las rutas excepto `/api/v1/health` exigen `Authorization: Bearer <token>`.
 
+### LLM usage (ledger Postgres)
+
+Cada `complete_json` exitoso en answer (sync / agentic) escribe una fila en `llm_usage_events`. Las respuestas llevan `usage` (última completion; ceros si no hubo llamada). Agregados:
+
+```bash
+curl -s 'http://localhost:8000/api/v1/usage/summary' | python3 -m json.tool
+# filtros: from, to, session_id, purpose=answer|grounded_composer|prompt_specialist
+```
+
 ### Sesiones y ownership
 
 - `session_id` — transcript durable (Postgres); opcional en agentic.

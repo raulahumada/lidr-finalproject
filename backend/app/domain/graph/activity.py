@@ -44,6 +44,7 @@ class ActivityRun:
     error: str | None = None
     question: str | None = None
     custom_notes: list[dict[str, str]] = field(default_factory=list)
+    last_usage: dict[str, Any] | None = None
 
 
 class GraphActivityLog:
@@ -73,6 +74,11 @@ class GraphActivityLog:
             note = str(item.get("note") or "").strip()
             if key and note:
                 run.custom_notes.append({"key": key, "note": note})
+
+    def set_usage(self, thread_id: str, usage: dict[str, Any]) -> None:
+        """Store last completion usage for live progress while still running."""
+        run = self._runs.setdefault(thread_id, ActivityRun())
+        run.last_usage = dict(usage)
 
     def finish(
         self,

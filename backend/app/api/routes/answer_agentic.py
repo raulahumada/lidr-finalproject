@@ -20,6 +20,7 @@ from app.schemas.agentic_answer import (
     GraphActivityEntry,
 )
 from app.schemas.answer import Citation
+from app.schemas.usage import TokenUsage
 
 router = APIRouter(tags=["answer-agentic"])
 
@@ -63,6 +64,7 @@ def answer_agentic(
             k=request.k,
             session_id=request.session_id,
             domain=request.domain,
+            owner_id=owner_id,
         )
     except ValueError as exc:
         raise HTTPException(
@@ -102,6 +104,7 @@ def answer_agentic_start(
             k=request.k,
             session_id=request.session_id,
             domain=request.domain,
+            owner_id=owner_id,
         )
     except ValueError as exc:
         raise HTTPException(
@@ -141,6 +144,14 @@ def answer_agentic_progress(
         for entry in run.entries
     ]
 
+    def _usage_from(raw: object | None) -> TokenUsage:
+        if isinstance(raw, dict):
+            try:
+                return TokenUsage.model_validate(raw)
+            except Exception:  # noqa: BLE001
+                return TokenUsage()
+        return TokenUsage()
+
     if run.status in ("running", "failed"):
         return AgenticProgressResponse(
             status=run.status,
@@ -149,6 +160,7 @@ def answer_agentic_progress(
             question=run.question,
             custom_notes=list(run.custom_notes or []),
             error=run.error,
+            usage=_usage_from(run.last_usage),
         )
 
     result = run.result or {}
@@ -190,6 +202,7 @@ def answer_agentic_progress(
         k=result.get("k"),
         interrupt_payload=result.get("interrupt_payload"),
         error=run.error,
+        usage=_usage_from(result.get("usage") or run.last_usage),
     )
 
 
@@ -201,6 +214,7 @@ def resume_agentic(
     thread_id: str,
     request: AgenticResumeRequest,
     runner: Optional[AgenticAnswerRunner] = Depends(get_agentic_answer_runner),
+    owner_id: str | None = Depends(get_console_user_id),
 ) -> AgenticAnswerResponse:
     if runner is None:
         raise HTTPException(
@@ -213,6 +227,7 @@ def resume_agentic(
             decision=request.decision,
             note=request.note,
             adjusted_answer=request.adjusted_answer,
+            owner_id=owner_id,
         )
     except KeyError as exc:
         raise HTTPException(

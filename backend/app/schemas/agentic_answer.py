@@ -5,6 +5,7 @@ from typing import Any, Literal
 from pydantic import BaseModel, Field
 
 from app.schemas.answer import Citation
+from app.schemas.usage import TokenUsage
 
 
 class RoutingHistoryEntry(BaseModel):
@@ -63,6 +64,7 @@ class AgenticAnswerResponse(BaseModel):
     prompt_version: str | None = None
     k: int | None = None
     interrupt_payload: dict[str, Any] | None = None
+    usage: TokenUsage = Field(default_factory=TokenUsage)
 
 
 class AgenticStartResponse(BaseModel):
@@ -103,3 +105,4 @@ class AgenticProgressResponse(BaseModel):
     k: int | None = None
     interrupt_payload: dict[str, Any] | None = None
     error: str | None = None
+    usage: TokenUsage = Field(default_factory=TokenUsage)

@@ -17,6 +17,11 @@ from app.domain.graph.checkpointer import get_checkpointer
 from app.domain.graph.domain_tag import detect_domain, parse_domain
 from app.domain.graph.state import AgenticAnswerState
 from app.foundation.llm.chat import ChatClient
+from app.foundation.llm.usage import (
+    bind_usage_run,
+    get_last_usage,
+    reset_usage_run,
+)
 from app.generation.conversation.anchors import detect_anchors, pinned_domain
 from app.generation.conversation.facts import facts_from_turn
 from app.generation.conversation.models import SessionMemory
@@ -29,6 +34,7 @@ from app.schemas.agentic_answer import (
     RoutingHistoryEntry,
 )
 from app.schemas.answer import Citation
+from app.schemas.usage import TokenUsage
 
 log = logging.getLogger(__name__)
 
@@ -175,6 +181,7 @@ class AgenticAnswerRunner:
         k: int | None = None,
         session_id: str | None = None,
         domain: str | None = None,
+        owner_id: str | None = None,
     ) -> AgenticAnswerResponse:
         thread_id = uuid.uuid4().hex
         settings = self.settings
@@ -185,13 +192,22 @@ class AgenticAnswerRunner:
             session_id=session_id,
             domain=domain,
         )
-        result = self._graph.invoke(initial, self._config(thread_id))
-        response = self._to_response(thread_id, result, resolved_k=resolved_k)
-        self._maybe_append_history(
-            response,
-            session_id=session_id or result.get("session_id"),
+        token = bind_usage_run(
+            session_id=session_id,
+            thread_id=thread_id,
+            owner_id=owner_id,
+            activity_log=self.activity_log,
         )
-        return response
+        try:
+            result = self._graph.invoke(initial, self._config(thread_id))
+            response = self._to_response(thread_id, result, resolved_k=resolved_k)
+            self._maybe_append_history(
+                response,
+                session_id=session_id or result.get("session_id"),
+            )
+            return response
+        finally:
+            reset_usage_run(token)
 
     def start_background_run(
         self,
@@ -200,6 +216,7 @@ class AgenticAnswerRunner:
         k: int | None = None,
         session_id: str | None = None,
         domain: str | None = None,
+        owner_id: str | None = None,
     ) -> str:
         """Schedule a streamed graph run; return thread_id immediately."""
         thread_id = uuid.uuid4().hex
@@ -214,6 +231,7 @@ class AgenticAnswerRunner:
                     resolved_k=resolved_k,
                     session_id=session_id,
                     domain=domain,
+                    owner_id=owner_id,
                 )
             finally:
                 _BACKGROUND_THREADS.discard(worker)
@@ -235,6 +253,7 @@ class AgenticAnswerRunner:
         resolved_k: int,
         session_id: str | None = None,
         domain: str | None = None,
+        owner_id: str | None = None,
     ) -> None:
         cfg = self._config(thread_id)
         initial = self._initial_state(
@@ -242,6 +261,12 @@ class AgenticAnswerRunner:
             resolved_k=resolved_k,
             session_id=session_id,
             domain=domain,
+        )
+        token = bind_usage_run(
+            session_id=session_id,
+            thread_id=thread_id,
+            owner_id=owner_id,
+            activity_log=self.activity_log,
         )
         try:
             for update in self._graph.stream(initial, cfg, stream_mode="updates"):
@@ -272,11 +297,6 @@ class AgenticAnswerRunner:
                     interrupts[0].value
                     if hasattr(interrupts[0], "value")
                     else interrupts[0]
-                )
-                reasons = list(
-                    (payload or {}).get("reasons")
-                    or values.get("review_reasons")
-                    or []
                 )
                 for entry in describe_node("__interrupt__", interrupts):
                     self.activity_log.append(
@@ -317,6 +337,8 @@ class AgenticAnswerRunner:
                 "failed",
                 error=str(exc)[:300],
             )
+        finally:
+            reset_usage_run(token)
 
     def resume(
         self,
@@ -325,6 +347,7 @@ class AgenticAnswerRunner:
         decision: str,
         note: str | None = None,
         adjusted_answer: str | None = None,
+        owner_id: str | None = None,
     ) -> AgenticAnswerResponse:
         cfg = self._config(thread_id)
         snapshot = self._graph.get_state(cfg)
@@ -342,12 +365,21 @@ class AgenticAnswerRunner:
             "note": note,
             "adjusted_answer": adjusted_answer,
         }
-        result = self._graph.invoke(Command(resume=payload), cfg)
-        response = self._to_response(
-            thread_id,
-            result,
-            resolved_k=int(result.get("k") or self.settings.answer_default_k),
+        token = bind_usage_run(
+            session_id=session_id,
+            thread_id=thread_id,
+            owner_id=owner_id,
+            activity_log=self.activity_log,
         )
+        try:
+            result = self._graph.invoke(Command(resume=payload), cfg)
+            response = self._to_response(
+                thread_id,
+                result,
+                resolved_k=int(result.get("k") or self.settings.answer_default_k),
+            )
+        finally:
+            reset_usage_run(token)
         self._maybe_append_history(
             response,
             session_id=session_id or result.get("session_id"),
@@ -361,6 +393,7 @@ class AgenticAnswerRunner:
         *,
         resolved_k: int,
     ) -> AgenticAnswerResponse:
+        usage = self._token_usage()
         interrupts = result.get("__interrupt__") or []
         if interrupts:
             payload = interrupts[0].value if hasattr(interrupts[0], "value") else interrupts[0]
@@ -383,6 +416,7 @@ class AgenticAnswerRunner:
                 prompt_version=result.get("prompt_version"),
                 k=resolved_k,
                 interrupt_payload=payload if isinstance(payload, dict) else None,
+                usage=usage,
             )
 
         status = str(result.get("status") or "completed")
@@ -405,6 +439,17 @@ class AgenticAnswerRunner:
             citations_valid=result.get("citations_valid"),
             prompt_version=result.get("prompt_version"),
             k=resolved_k,
+            usage=usage,
+        )
+
+    @staticmethod
+    def _token_usage() -> TokenUsage:
+        usage = get_last_usage()
+        return TokenUsage(
+            input_tokens=usage.input_tokens,
+            output_tokens=usage.output_tokens,
+            total_tokens=usage.total_tokens,
+            reported=usage.reported,
         )
 
     @staticmethod

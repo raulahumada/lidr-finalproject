@@ -6,7 +6,17 @@ from datetime import datetime
 from typing import Dict, List, Optional
 
 from pgvector.sqlalchemy import Vector
-from sqlalchemy import BigInteger, Boolean, ForeignKey, Index, String, Text, func, text
+from sqlalchemy import (
+    BigInteger,
+    Boolean,
+    ForeignKey,
+    Index,
+    Integer,
+    String,
+    Text,
+    func,
+    text,
+)
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 from sqlalchemy.types import DateTime
@@ -121,3 +131,28 @@ class AgentProfileRow(Base):
         server_default=func.now(),
         onupdate=func.now(),
     )
+
+
+class LlmUsageEventRow(Base):
+    """One billed chat completion (provider-reported tokens)."""
+
+    __tablename__ = "llm_usage_events"
+    __table_args__ = (
+        Index("ix_llm_usage_events_created_at", "created_at"),
+        Index("ix_llm_usage_events_session_id", "session_id"),
+        Index("ix_llm_usage_events_purpose", "purpose"),
+    )
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now()
+    )
+    purpose: Mapped[str] = mapped_column(String(32), nullable=False)
+    model: Mapped[str] = mapped_column(String(128), nullable=False)
+    input_tokens: Mapped[int] = mapped_column(Integer, nullable=False)
+    output_tokens: Mapped[int] = mapped_column(Integer, nullable=False)
+    total_tokens: Mapped[int] = mapped_column(Integer, nullable=False)
+    reported: Mapped[bool] = mapped_column(Boolean, nullable=False)
+    session_id: Mapped[Optional[str]] = mapped_column(String(64), nullable=True)
+    thread_id: Mapped[Optional[str]] = mapped_column(String(64), nullable=True)
+    owner_id: Mapped[Optional[str]] = mapped_column(String(64), nullable=True)

@@ -69,6 +69,8 @@ def test_no_evidence_skips_llm() -> None:
     assert result.no_evidence is True
     assert result.citations == []
     assert chat.calls == 0
+    assert result.usage.reported is False
+    assert result.usage.total_tokens == 0
     assert "evidencia" in result.answer.lower() or "corpus" in result.answer.lower()
 
 
