@@ -17,6 +17,7 @@ const ADMIN_ONLY = [
   "/settings",
   "/ingest",
   "/users",
+  "/usage",
 ] as const;
 
 export function isAdminOnly(pathname: string): boolean {
@@ -43,5 +44,6 @@ export function isAdminUpstreamPath(pathname: string): boolean {
   if (pathname.startsWith("/api/v1/config")) return true;
   if (pathname.startsWith("/api/v1/ingest")) return true;
   if (pathname.startsWith("/api/v1/answer/agents")) return true;
+  if (pathname.startsWith("/api/v1/usage")) return true;
   return false;
 }

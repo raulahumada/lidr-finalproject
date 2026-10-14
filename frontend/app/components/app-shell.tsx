@@ -16,6 +16,7 @@ import {
 import { StatusDot } from "@astryxdesign/core/StatusDot";
 import { VStack } from "@astryxdesign/core/Layout";
 import {
+  Activity,
   Box,
   Database,
   Home,
@@ -239,6 +240,12 @@ export function AppShellLayout({
                   icon={Settings}
                   href="/settings"
                   isSelected={pathname.startsWith("/settings")}
+                />
+                <SideNavItem
+                  label="Uso"
+                  icon={Activity}
+                  href="/usage"
+                  isSelected={pathname.startsWith("/usage")}
                 />
                 <SideNavItem
                   label="Usuarios"
