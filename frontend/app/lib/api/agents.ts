@@ -1,4 +1,4 @@
-/** Thin client for GET/POST/PATCH/DELETE /answer/agents */
+/** Agent catalog + custom profile CRUD via BFF. || Catálogo de agentes y customs vía BFF. */
 
 import { AnswerApiError, getApiBaseUrl } from "./answer";
 

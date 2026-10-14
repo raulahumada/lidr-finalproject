@@ -1,3 +1,5 @@
+"""HTTP contracts for semantic ``POST /search``."""
+
 from pydantic import BaseModel, ConfigDict, Field
 
 

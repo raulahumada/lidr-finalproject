@@ -1,3 +1,5 @@
+"""HTTP contracts for the in-memory items demo CRUD."""
+
 from datetime import datetime
 
 from pydantic import BaseModel, ConfigDict, Field

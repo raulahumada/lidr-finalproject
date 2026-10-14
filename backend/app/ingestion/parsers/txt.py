@@ -1,3 +1,5 @@
+"""Plain-text loader (utf-8 with fallback)."""
+
 from __future__ import annotations
 
 from pathlib import Path

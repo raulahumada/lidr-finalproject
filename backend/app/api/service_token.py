@@ -1,11 +1,14 @@
 """App-wide service-to-service bearer authentication.
 
 When ``SERVICE_TOKEN`` is set, every API route except health (and docs in
-non-production) requires ``Authorization: Bearer <token>``. Empty token in
-non-production leaves the service open (local/tests) with a boot warning.
-Production + empty token is refused in ``create_app`` (fail closed).
-"""
+non-production) requires ``Authorization: Bearer …``. Empty token in
+non-production leaves the API open with a warning; ``APP_ENV=production``
+refuses to boot without a token — a forgotten secret is worse than none.
 
+|| Auth bearer servicio-a-servicio en toda la API.
+Con token, todo menos health exige Bearer. Vacío en no-prod = API abierta
+(con warning). En production sin token el proceso no arranca.
+"""
 from __future__ import annotations
 
 import logging

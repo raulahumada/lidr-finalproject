@@ -1,3 +1,5 @@
+"""Map file extension → parser implementation."""
+
 from __future__ import annotations
 
 from app.ingestion.parsers.docx_parser import DocxParser

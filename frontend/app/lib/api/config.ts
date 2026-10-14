@@ -1,4 +1,4 @@
-/** Thin client for /api/v1/config/models */
+/** Runtime chat-model config via BFF (/config/models). || Config de modelos de chat en runtime vía BFF. */
 
 import { AnswerApiError, getApiBaseUrl } from "./answer";
 

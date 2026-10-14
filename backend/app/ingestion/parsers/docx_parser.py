@@ -1,3 +1,5 @@
+"""DOCX → text via ``python-docx``."""
+
 from __future__ import annotations
 
 from pathlib import Path

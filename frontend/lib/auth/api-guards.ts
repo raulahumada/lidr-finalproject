@@ -1,3 +1,9 @@
+/**
+ * Session and admin gates for BFF route handlers.
+ * Returns a Response to short-circuit, or the Auth.js session to proceed.
+ *
+ * || Gates de sesión/admin para handlers del BFF.
+ */
 import type { Session } from "next-auth";
 
 import { auth } from "@/auth";

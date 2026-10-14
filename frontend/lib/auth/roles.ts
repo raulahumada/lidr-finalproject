@@ -1,5 +1,12 @@
+/**
+ * Console roles and admin-only path / upstream-route guards.
+ *
+ * Registration creates `usuario` (often disabled until an admin enables the
+ * account). Admin screens and admin FastAPI prefixes are gated here.
+ *
+ * || Roles de consola y guards de rutas admin (UI + upstream).
+ */
 export const ROLES = ["usuario", "administrador"] as const;
-
 export type Role = (typeof ROLES)[number];
 
 export const DEFAULT_ROLE: Role = "usuario";

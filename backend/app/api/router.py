@@ -1,3 +1,13 @@
+"""Aggregate HTTP routers under the API prefix.
+
+Routers stay transport-only; business wiring lives in ``dependencies`` /
+``domain``.
+
+|| Agrega los routers HTTP bajo el prefijo de API.
+Los routers se quedan solo como transporte; el cableado de negocio vive en
+``dependencies`` / ``domain``.
+"""
+
 from fastapi import APIRouter
 
 from app.api.routes import (

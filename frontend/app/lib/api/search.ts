@@ -1,4 +1,4 @@
-/** Thin client for POST /api/v1/search — types mirrored from backend schemas/search.py */
+/** Semantic search client via same-origin BFF. || Cliente de search semántico vía BFF. */
 
 import { AnswerApiError, getApiBaseUrl } from "./answer";
 

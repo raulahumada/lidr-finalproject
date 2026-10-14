@@ -34,3 +34,8 @@ graphify-out/
 # Live eval harness reports (keep directory via .gitkeep)
 backend/eval/reports/*.json
 
+# OpenSpec pre-propose drafts — local only (never PR)
+openspec/drafts/*
+!openspec/drafts/README.md
+
+backend/.railway-build-stamp

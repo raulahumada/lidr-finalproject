@@ -1,3 +1,5 @@
+"""HTTP contracts for conversation session CRUD."""
+
 from datetime import datetime
 from typing import Any, Literal
 

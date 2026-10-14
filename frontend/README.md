@@ -1,36 +1,91 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Entrega LiDR — consola (frontend)
 
-## Getting Started
+Consola Next.js para el RAG multiagente Metropol: login, chat agentic multi-sesión, search, ingest, catálogo de agentes, users/settings admin.
 
-First, run the development server:
+Uno de los dos proyectos del monorepo; el otro es `backend/`. Portada: [README de la raíz](../README.md).
+
+**Todos los comandos de este archivo corren desde `frontend/`.**
+
+## Puesta en marcha
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+cd frontend
+cp .env.example .env.local
+npm install
+
+# Auth DB (misma instancia Compose, otra database — ver docs/local-setup.md)
+npm run db:migrate
+npm run seed:admin -- admin@example.com   # o AUTH_SEED_PASSWORD=
+
+npm run dev   # http://localhost:3000
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+UI kit: **Astryx** (`@astryxdesign/core` + theme). Antes de UI nueva: leer [`AGENTS.md`](AGENTS.md) (`npx astryx …`).
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Autenticación y BFF
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+| Pieza | Rol |
+|-------|-----|
+| Auth.js (`next-auth`) | Sesión de persona (credentials). Google diferido. |
+| Prisma + `AUTH_DATABASE_URL` | Identidad (users, accounts, sessions) — **no** es la DB del corpus |
+| BFF `app/api/v1/*` | Proxy same-origin → FastAPI con `SERVICE_TOKEN` + `X-Console-User` |
+| Registro | Cuenta **disabled** hasta que un admin habilite en `/users` |
 
-## Learn More
+El browser **nunca** ve `AI_SERVICE_URL` ni `SERVICE_TOKEN` (sin `NEXT_PUBLIC_`). Toda mutación al API sale del servidor Next.
 
-To learn more about Next.js, take a look at the following resources:
+### Variables que rompen si faltan
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+Detalle en [`.env.example`](.env.example):
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+| Variable | Si falta |
+|----------|----------|
+| `AUTH_SECRET` | Auth.js no firma cookies |
+| `AUTH_URL` | En Vercel, callbacks mal armados sin la URL pública |
+| `AUTH_DATABASE_URL` | Login/registro fallan |
+| `AI_SERVICE_URL` | BFF no alcanza Railway/local API |
+| `SERVICE_TOKEN` | Debe coincidir con el backend; vacío solo en local abierto |
 
-## Deploy on Vercel
+## Scripts
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+| Script | Qué hace |
+|--------|----------|
+| `npm run dev` | Next dev |
+| `npm run build` | `prisma generate` + `next build` |
+| `npm run db:migrate` | `prisma migrate deploy` (acto deliberado; **no** en el build de Vercel) |
+| `npm run db:generate` | Solo client Prisma |
+| `npm run seed:admin` | Primer admin (o `AUTH_SEED_PASSWORD`) |
+| `npm run lint` | ESLint |
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## Mapa de rutas (App Router)
+
+```text
+app/
+├── (auth)/login|register     # credentials
+├── (console)/
+│   ├── answer/               # chat agentic multi-sesión
+│   ├── search/
+│   └── (admin)/
+│       ├── agents/           # catálogo + customs
+│       ├── ingest/
+│       ├── users/
+│       └── settings/         # runtime chat models
+├── api/auth/[...nextauth]    # Auth.js
+└── api/v1/*                  # BFF → FastAPI
+lib/auth/                     # roles, guards
+lib/ai-service/               # relay Bearer + X-Console-User
+app/lib/api/                  # clients tipados (answer, agentic, sessions, …)
+```
+
+## Despliegue (Vercel)
+
+Root directory: `frontend`. Guía: [`docs/deploy-railway-vercel.md`](../docs/deploy-railway-vercel.md).
+
+Tras el primer deploy:
+
+```bash
+# contra AUTH_DATABASE_URL de prod
+npm run db:migrate
+AUTH_SEED_PASSWORD='…' npm run seed:admin -- admin@tudominio.com
+```
+
+`AI_SERVICE_URL` = URL pública del API en Railway (sin slash final).

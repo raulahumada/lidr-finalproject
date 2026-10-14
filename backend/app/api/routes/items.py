@@ -1,3 +1,13 @@
+"""In-memory demo CRUD (``/items``).
+
+Kept for the early course scaffold; data is lost on process restart and is
+not part of the Metropol RAG product surface.
+
+|| CRUD demo en memoria (``/items``).
+Queda del scaffold inicial del curso; se pierde al reiniciar y no es parte
+de la superficie de producto Metropol RAG.
+"""
+
 from datetime import datetime, timezone
 
 from fastapi import APIRouter, HTTPException, status

@@ -1,4 +1,4 @@
-/** Thin client for /api/v1/ingest — types mirrored from backend schemas/ingest.py */
+/** Corpus ingest runs/stats via BFF. || Runs y stats de ingest vía BFF. */
 
 import { AnswerApiError, getApiBaseUrl } from "./answer";
 

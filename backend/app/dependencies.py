@@ -1,4 +1,13 @@
-"""Composition root: wire singletons for API dependencies."""
+"""Composition root: wire singletons for API dependencies.
+
+Keeps routers transport-only: factories for embedder, retriever, answer
+services, agentic runner, session store, ingest registry. Mirrors the course
+``dependencies.py`` shape, scaled to what Metropol actually uses.
+
+|| Composition root: arma singletons para las dependencias de la API.
+Deja los routers solo como transporte. Réplica de la forma del curso,
+reducida a lo que Metropol usa de verdad.
+"""
 
 from __future__ import annotations
 

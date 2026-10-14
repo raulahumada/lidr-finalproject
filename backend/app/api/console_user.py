@@ -1,5 +1,12 @@
-"""Read console operator id from the BFF-forwarded header."""
+"""Read console operator id from the BFF-forwarded header.
 
+``X-Console-User`` scopes conversation sessions to the operator. Trust is
+acceptable because only the BFF (holding ``SERVICE_TOKEN``) can call the API
+successfully when the token is configured.
+
+|| Lee el id del operador desde el header que reenvía el BFF.
+``X-Console-User`` acota las sesiones de chat al dueño.
+"""
 from __future__ import annotations
 
 from fastapi import Header

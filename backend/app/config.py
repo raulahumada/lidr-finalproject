@@ -1,3 +1,13 @@
+"""Application settings loaded from environment / ``.env``.
+
+Pydantic Settings is the single place knobs live for local and Railway.
+``get_settings()`` is cached; tests clear the cache when they monkeypatch env.
+
+|| Settings de la aplicación desde entorno / ``.env``.
+Pydantic Settings es el único lugar donde viven los knobs (local y Railway).
+``get_settings()`` está cacheado; los tests limpian el cache al monkeyparchar env.
+"""
+
 from functools import lru_cache
 
 from pydantic_settings import BaseSettings, SettingsConfigDict

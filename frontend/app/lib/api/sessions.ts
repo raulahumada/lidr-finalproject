@@ -1,4 +1,4 @@
-/** Thin client for conversation sessions — types mirrored from backend schemas */
+/** Conversation session CRUD via same-origin BFF. || CRUD de sesiones de chat vía BFF. */
 
 import { AnswerApiError, getApiBaseUrl } from "./answer";
 

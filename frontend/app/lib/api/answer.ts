@@ -1,4 +1,4 @@
-/** Thin client for POST /api/v1/answer — types mirrored from backend schemas/answer.py */
+/** Sync answer client (POST /api/v1/answer) via same-origin BFF. Types mirror backend schemas. || Cliente answer sync vía BFF. */
 
 export type AnswerRequest = {
   question: string;

@@ -1,4 +1,4 @@
-/** Thin client for agentic answer + live progress — types mirrored from backend schemas */
+/** Agentic answer + progress/resume clients via same-origin BFF. || Clientes agentic (start/progress/resume) vía BFF. */
 
 import {
   AnswerApiError,

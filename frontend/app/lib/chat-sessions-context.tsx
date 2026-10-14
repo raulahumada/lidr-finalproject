@@ -1,5 +1,11 @@
 "use client";
 
+/**
+ * Client context for the multi-session sidebar on /answer.
+ * Lists/creates/deletes sessions via same-origin BFF clients.
+ *
+ * || Contexto cliente del sidebar multi-sesión en /answer.
+ */
 import {
   createContext,
   useCallback,

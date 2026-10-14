@@ -1,21 +1,32 @@
 # Entrega LiDR — guía para agentes
 
-Monorepo en etapa inicial. Dos apps independientes: API FastAPI y frontend Next.js. Integración frontend↔backend aún no cableada del todo.
+**Producto:** plataforma **multiagente + RAG** para el Máster AI Engineering (LIDR), con cliente **Metropol Fintech**. El corpus RAG es la documentación de omnicanalidad/agentes del cliente (también en NotebookLM).
 
-**Producto:** plataforma **multiagente + RAG** para el Máster AI Engineering (LIDR), con cliente **Metropol Fintech**. El corpus RAG es la documentación de omnicanalidad/agentes del cliente (también en NotebookLM). Visión, dominio y agentes: **`README.md`**. Este archivo es solo guía operativa del código.
+Este archivo es la guía **operativa** del código para agentes. No duplicar ensayos de producto ni de deploy:
+
+| Documento | Rol |
+|-----------|-----|
+| [`README.md`](README.md) | Producto, arquitectura, auth dual, deploy a alto nivel |
+| [`backend/README.md`](backend/README.md) | API: capas, ingest, agentic, Docker |
+| [`frontend/README.md`](frontend/README.md) | Consola: Auth.js, BFF, scripts |
+| [`docs/local-setup.md`](docs/local-setup.md) | Paso a paso local |
+| [`docs/deploy-railway-vercel.md`](docs/deploy-railway-vercel.md) | Greenfield Railway + Vercel + ingest remoto |
+| [`frontend/AGENTS.md`](frontend/AGENTS.md) | Next canary + Astryx |
+| `openspec/specs/` | Comportamiento normativo actual |
+| `openspec/drafts/` | Borradores **locales** de `/opsx-prespec` (gitignored; no PR) |
 
 ## Estructura
 
 ```
 entrega-lidr/
-├── AGENTS.MD          ← este archivo (contexto de repo)
-├── docker-compose.yml ← Postgres 16 + pgvector + pgAdmin (local)
-├── docker/            ← init SQL (extensión vector)
-├── backend/           ← FastAPI ("Entrega LiDR API")
-└── frontend/          ← Next.js 16 + React 19 ("lidr-front")
-    └── AGENTS.md      ← reglas Next.js (canary) + Astryx; no duplicar aquí
+├── AGENTS.md            ← este archivo (contexto operativo)
+├── README.md            ← producto + arquitectura
+├── docs/                ← local-setup + deploy
+├── docker-compose.yml   ← Postgres 16 + pgvector + Redis + pgAdmin
+├── docker/              ← init SQL (extensión vector)
+├── backend/             ← FastAPI (+ Dockerfile Railway)
+└── frontend/            ← Next.js 16 + React 19 + Astryx
 ```
-
 ## Base de datos local (Postgres + pgvector + pgAdmin)
 
 Credenciales en la **raíz**: copiá `.env.example` → `.env` y reemplazá los placeholders. Compose lee ese `.env` solo; no van passwords en `docker-compose.yml`.
@@ -281,34 +292,27 @@ Scorer offline: `pytest -q tests/test_eval_scoring.py`.
 
 ## Frontend (`frontend/`)
 
-Stack: Next.js `16.3.5` (App Router), React `19.2.8`, TypeScript, Tailwind CSS 4, ESLint.
+Stack: Next.js `16.3.5` (App Router), React `19.2.8`, TypeScript, Tailwind CSS 4, Astryx, Auth.js + Prisma.
 
-UI kit instalado pero **aún no integrado** en el código de app:
-
-- `@astryxdesign/core` + `@astryxdesign/theme-neutral` `^0.6.1`
-- CLI: `@astryxdesign/cli` → `npx astryx <cmd>`
-
-La home (`app/page.tsx`) y el layout siguen siendo el boilerplate de `create-next-app` (Geist, Tailwind crudo). Falta importar CSS de Astryx y migrar UI a componentes del kit.
-
-Detalle operativo de Next + Astryx: leer **`frontend/AGENTS.md`** antes de tocar UI.
-
-### Correr frontend
+Detalle: **`frontend/README.md`** + **`frontend/AGENTS.md`** (Astryx) antes de tocar UI.
 
 ```bash
 cd frontend
-npm install   # si hace falta
+cp .env.example .env.local
+npm install
+npm run db:migrate && npm run seed:admin -- admin@example.com
 npm run dev   # http://localhost:3000
 ```
 
-Scripts: `dev`, `build`, `start`, `lint`.
+Scripts: `dev`, `build`, `start`, `lint`, `db:migrate`, `db:generate`, `seed:admin`.
 
 ## Estado actual / gaps
 
 - Sin package/workspace root; cada carpeta se instala y corre por separado.
-- RAG: Alembic + `POST /api/v1/search` + ingest CLI/HTTP (`/api/v1/ingest/*` + UI `/ingest`) + `POST /answer` + `POST /answer/agentic` (+ `/start` + `/progress` + chat sessions + conversation memory) + runtime models (`/config/models` + `/settings`); Postgres checkpointer + activity log in-process.
-- Dual auth: FastAPI `SERVICE_TOKEN` + Next Auth.js/Prisma identity + same-origin BFF (`/api/v1/*`).
-- Items CRUD sigue en memoria.
-- Front chat agentic multi-sesión en `/answer` (Astryx); sin package de tipos compartidos monorepo.
+- RAG + agentic + sessions + ownership + dual auth + ingest console cableados (ver README).
+- Items CRUD de demo sigue en memoria.
+- Activity/progress agentic in-process (checkpointer Postgres sí sobrevive redeploy).
+- Deploy: Railway (`backend/Dockerfile`) + Vercel (`frontend/`) — ver `docs/deploy-railway-vercel.md`.
 
 ## Convenciones para agentes
 
@@ -321,3 +325,4 @@ Scripts: `dev`, `build`, `start`, `lint`.
 7. Cambios alineados a la arquitectura del curso: `/opsx-prespec` (draft + sync referencia + surface front|back|both → OpenSpec propose). Implementar con `/opsx-apply`.
 8. Backend Python: seguir y contrastar `docs/python-best-practices.md` en `/opsx-propose` y `/opsx-prespec` (sección Practices check).
 9. **Graphify** (grafo local en `graphify-out/`): en `/opsx-prespec` y `/opsx-propose`, si existe `graphify-out/graph.json`, usar `graphify query` / `path` / `explain` antes de Grep/Glob amplios; registrar notas en el draft. Tras cambios de código: `graphify update .`.
+10. **Drafts** (`openspec/drafts/`): solo locales; están en `.gitignore`. No incluir drafts en commits/PR. El change formal vive en `openspec/changes/` tras approve + propose.

@@ -1,3 +1,15 @@
+"""FastAPI application entrypoint.
+
+Composition root at the process edge: load settings, refuse an empty
+``SERVICE_TOKEN`` in production, wire CORS + bearer middleware, open the
+LangGraph checkpointer for the process lifetime, and mount ``api_router``.
+
+|| Punto de entrada de la aplicación FastAPI.
+Composition root en el borde del proceso: settings, rechazo de token vacío en
+producción, CORS + bearer, checkpointer LangGraph durante el lifespan, y
+montaje de ``api_router``.
+"""
+
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI

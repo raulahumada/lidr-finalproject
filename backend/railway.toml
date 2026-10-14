@@ -1,0 +1,11 @@
+# Railway service config when root directory is `backend/`.
+# Local `railway up` from this folder uploads only this context.
+
+[build]
+builder = "DOCKERFILE"
+dockerfilePath = "Dockerfile"
+
+[deploy]
+healthcheckPath = "/api/v1/health"
+healthcheckTimeout = 60
+restartPolicyType = "ON_FAILURE"

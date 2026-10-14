@@ -1,3 +1,5 @@
+"""HTTP contracts for agentic answer, progress, and human-gate resume."""
+
 from typing import Any, Literal
 
 from pydantic import BaseModel, Field

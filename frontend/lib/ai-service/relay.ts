@@ -1,3 +1,12 @@
+/**
+ * Server-only relay from the Next BFF to FastAPI.
+ *
+ * Attaches `Authorization: Bearer SERVICE_TOKEN` and `X-Console-User` from the
+ * Auth.js session so the browser never sees AI_SERVICE_URL or the shared secret.
+ *
+ * || Relay server-only del BFF Next hacia FastAPI.
+ * Adjunta Bearer y X-Console-User; el browser nunca ve la URL del API ni el token.
+ */
 import "server-only";
 
 import { auth } from "@/auth";
