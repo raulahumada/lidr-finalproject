@@ -73,7 +73,8 @@ Stack: FastAPI, Uvicorn, Pydantic Settings, python-dotenv.
 | `app/api/routes/search.py` | `POST /api/v1/search` (semántico sobre chunks) |
 | `app/api/routes/ingest.py` | `POST/GET /api/v1/ingest/*` (runs + stats; jobs in-process) |
 | `app/api/routes/config_models.py` | `GET/PUT /api/v1/config/models` (runtime chat roles; Redis) |
-| `app/foundation/persistence/` | SQLAlchemy engine, modelos `documents`/`chunks`, store |
+| `app/api/routes/usage.py` | `GET /api/v1/usage/summary` (ledger de tokens de chat) |
+| `app/foundation/persistence/` | SQLAlchemy engine, modelos `documents`/`chunks`/`llm_usage_events`, store |
 | `app/generation/rag/` | Embedder OpenAI, retriever, seed fixture |
 | `app/schemas/` | Contratos Pydantic (search, answer, session, …) |
 | `alembic/` | Migraciones (pgvector chunks) |
@@ -192,6 +193,20 @@ curl -s http://localhost:8000/api/v1/answer \
   -H 'Content-Type: application/json' \
   -d '{"question":"¿Cómo es el handoff de cobranzas con Tenela?","k":5}' | python3 -m json.tool
 ```
+
+### LLM usage accounting (`/usage/summary` + UI `/usage`)
+
+Cada `ChatClient.complete_json` exitoso en answer (sync / agentic) escribe una fila en Postgres `llm_usage_events` (Alembic `0006`) con purpose `answer` | `grounded_composer` | `prompt_specialist`, modelo, tokens reportados por OpenAI, y opcionalmente `session_id` / `thread_id` / `owner_id`. Sin llamada al modelo (CAG / no_evidence) → **cero** filas. Fallo al insertar → log `llm_usage_record_failed` y la respuesta igual se entrega.
+
+Respuestas de `/answer` y agentic (incl. progress) llevan `usage` de la **última** completion (ceros + `reported=false` si no hubo llamada). **Sin USD** en este change.
+
+```bash
+curl -s 'http://localhost:8000/api/v1/usage/summary' | python3 -m json.tool
+# filtros: from, to, session_id, purpose=answer|grounded_composer|prompt_specialist
+# from > to → 422
+```
+
+Consola: admin **Sistema → Uso** (`/usage`); BFF exige `administrador` para `/api/v1/usage`.
 
 ### Answer agentic (LangGraph)
 
